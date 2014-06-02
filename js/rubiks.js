@@ -145,13 +145,20 @@ function initCubeBuffer() {
       new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
 }
 
-function drawRubiksCube() {
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	perspectiveMatrix = makePerspective(45,
+function reshape() {
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    perspectiveMatrix = makePerspective(120,
 										canvas.width / canvas.height,
 										0.1,
 										100.0);
-	initCubeBuffer();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    drawRubiksCube();
+}
+
+function drawRubiksCube() {
+    initCubeBuffer();
 	loadIdentity();
 	mvTranslate([0.0, 0.0, -6.0]);
 	gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
@@ -171,5 +178,5 @@ function start() {
 		gl.depthFunc(gl.LEQUAL);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	}
-	drawRubiksCube();
+    reshape();
 }
