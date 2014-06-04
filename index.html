@@ -11,18 +11,22 @@
         <script src="js/glUtils.js"></script>
         <script src="js/rubiks.js"></script>
         <script id='fragmentShader' type='x-shader/x-fragment'>
+            varying lowp vec4 vColor;
             void main(void) {
-                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+                gl_FragColor = vColor;
             }
         </script>
         <script id='vertexShader' type='x-shader/x-vertex'>
             attribute vec3 vertexPosition;
+            attribute vec4 vertexColor;
             uniform mat4 modelViewMatrix;
             uniform mat4 projectionMatrix;
+            varying lowp vec4 vColor;
             void main(void) {
                 gl_Position = projectionMatrix * modelViewMatrix * vec4(vertexPosition, 1.0);
+                vColor = vertexColor;
             }
-        </script>
+       </script>
     </head>
     <body onload="start()" onresize="reshape()">
         <canvas id="glcanvas">
