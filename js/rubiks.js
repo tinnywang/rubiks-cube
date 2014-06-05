@@ -211,7 +211,7 @@ function drawCube() {
     gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
     // cube faces
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
-    gl.drawElements(gl.TRIANGLE_STRIP, 36, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
 
     // cube outline
     /*
