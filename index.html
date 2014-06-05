@@ -7,8 +7,7 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="main.css">
-        <script src="js/sylvester.js"></script>
-        <script src="js/glUtils.js"></script>
+        <script src="js/gl-matrix.js"></script>
         <script src="js/rubiks.js"></script>
         <script id='fragmentShader' type='x-shader/x-fragment'>
             varying lowp vec4 vColor;
@@ -28,8 +27,8 @@
             }
        </script>
     </head>
-    <body onload="start()" onresize="reshape()">
-        <canvas id="glcanvas">
+    <body onload="start()" onmouseup="handleMouseUp()" onmousedown="handleMouseDown()">
+        <canvas id="glcanvas" onmousedown="rotate()">
         </canvas>
     </body>
 </html>

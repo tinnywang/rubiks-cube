@@ -3,7 +3,9 @@ var gl;
 var shaderProgram;
 var vertexPosition;
 var vertexColor;
-var perspectiveMatrix;
+var modelViewMatrix = mat4.create();
+var projectionMatrix = mat4.create();
+var rotationMatrix = mat4.create();
 var cubeVerticesBuffer;
 var cubeVerticesIndexBuffer;
 var cubeVerticesColorBuffer;
@@ -186,13 +188,9 @@ function initCubeBuffer() {
     */
 }
 
-function reshape() {
+function drawScene() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
-    perspectiveMatrix = makePerspective(120,
-            canvas.width / canvas.height,
-            0.1,
-            100.0);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     drawRubiksCube();
@@ -200,8 +198,6 @@ function reshape() {
 
 function drawCube() {
     initCubeBuffer();
-    loadIdentity();
-    mvTranslate([0.0, 0.0, -6.0]);
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
     gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
     // cube colors
@@ -209,23 +205,33 @@ function drawCube() {
     gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
     // cube faces
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
-    setMatrixUniforms();
     gl.drawElements(gl.TRIANGLE_STRIP, 36, gl.UNSIGNED_SHORT, 0);
 
     // cube outline
     /*
        gl.lineWidth(1.0);
        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeOutlineIndexBuffer);
-       setMatrixUniforms();
        gl.drawElements(gl.LINE_LOOP, 30, gl.UNSIGNED_SHORT, 0);
      */
 
 }
 
 function drawRubiksCube() {
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.FRONT);
+    mat4.perspective(projectionMatrix,
+            30,
+            canvas.width / canvas.height,
+            0.1,
+            100.0);
+    mat4.identity(modelViewMatrix);
+    mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -10]);
+    mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
     drawCube();
+    setMatrixUniforms();
+}
+
+function tick() {
+    requestAnimationFrame(tick);
+    drawScene();
 }
 
 function start() {
@@ -237,6 +243,22 @@ function start() {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        tick();
     }
-    reshape();
+}
+
+function setMatrixUniforms() {
+    var projectionUniform = gl.getUniformLocation(shaderProgram, 'projectionMatrix');
+    gl.uniformMatrix4fv(projectionUniform, false, projectionMatrix);
+    var modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
+    gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
+}
+
+function rotate() {
+}
+
+function handleMouseDown() {
+}
+
+function handleMouseUp() {
 }
