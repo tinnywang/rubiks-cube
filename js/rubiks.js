@@ -11,12 +11,18 @@ var cubeVerticesIndexBuffer;
 var cubeVerticesColorBuffer;
 var cubeOutlineIndexBuffer;
 
+var mouseDown = false;
+var x_init;
+var y_init;
+var x_new;
+var y_new;
+
 function initWebGL(canvas) {
     if (!window.WebGLRenderingContext) {
         console.log("Your browser doesn't support WebGL.")
             return null;
     }
-    gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (!gl) {
         console.log("Your browser supports WebGL, but initialization failed.");
         return null;
@@ -62,7 +68,7 @@ function initShaders() {
     gl.attachShader(shaderProgram, vertexShader);
     gl.linkProgram(shaderProgram);
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        console.log("Unable to initialize the shader program");
+        console.log('Unable to initialize the shader program');
     }
     gl.useProgram(shaderProgram);
     vertexPosition = gl.getAttribLocation(shaderProgram, 'vertexPosition');
@@ -235,7 +241,7 @@ function tick() {
 }
 
 function start() {
-    canvas = document.getElementById("glcanvas");
+    canvas = document.getElementById('glcanvas');
     gl = initWebGL(canvas);
     initShaders();
     if (gl) {
@@ -254,11 +260,36 @@ function setMatrixUniforms() {
     gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
 }
 
-function rotate() {
+function degreesToRadians(degrees) {
+    return degrees * Math.PI / 180;
 }
 
-function handleMouseDown() {
+function rotate(event) {
+    if (mouseDown) {
+        x_new = event.pageX;
+        y_new = event.pageY;
+        delta_x = (x_new - x_init) / 10;
+        delta_y = (y_new - y_init) / 10;
+        var axis = [-delta_x, delta_y, 0];
+        var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
+        var newRotationMatrix = mat4.create();
+        mat4.rotate(rotationMatrix, rotationMatrix, degreesToRadians(degrees), axis);
+    }
 }
 
-function handleMouseUp() {
+function startRotate(event) {
+    mouseDown = true;
+    x_init = event.pageX;
+    y_init = event.pageY;
 }
+
+function endRotate(event) {
+    mouseDown = false;
+}
+
+$(document).ready(function() {
+    start();
+    $('#glcanvas').mousedown(startRotate);
+    $('#glcanvas').mousemove(rotate);
+    $('#glcanvas').mouseup(endRotate);
+});
