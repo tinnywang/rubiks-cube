@@ -205,8 +205,21 @@ function drawRubiksCube() {
     mat4.identity(modelViewMatrix);
     mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -10]);
     mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
-    drawCube();
-    setMatrixUniforms();
+    var mvMatrix = mat4.create();
+    mat4.copy(mvMatrix, modelViewMatrix);
+    for (var x = -1; x < 2; x++) {
+        for (var y = -1; y < 2; y++) {
+            for (var z = -1; z < 2; z++) {
+                if (x == 0 && y == 0 && z == 0) {
+                    continue;
+                }
+                mat4.translate(modelViewMatrix, modelViewMatrix, [x, y, z]);
+                drawCube();
+                setMatrixUniforms();
+                mat4.copy(modelViewMatrix, mvMatrix);
+            }
+        }
+    }
 }
 
 function tick() {
@@ -219,7 +232,7 @@ function start() {
     gl = initWebGL(canvas);
     initShaders();
     if (gl) {
-        gl.clearColor(0.0, 0.0, 1.0, 1.0);
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.CULL_FACE);
