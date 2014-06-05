@@ -178,15 +178,15 @@ function drawScene() {
 
 function drawCube() {
     initCubeBuffer();
+    // cube vertices
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
+    gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
     // cube outline
     gl.disableVertexAttribArray(vertexColor);
     gl.lineWidth(5.0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeOutlineBuffer);
     gl.drawElements(gl.LINE_LOOP, 30, gl.UNSIGNED_SHORT, 0);
     gl.enableVertexAttribArray(vertexColor);
-    // cube vertices
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
-    gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
     // cube colors
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesColorBuffer);
     gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
