@@ -259,10 +259,11 @@ function rotate(event) {
         y_new = event.pageY;
         delta_x = (x_new - x_init) / 10;
         delta_y = (y_new - y_init) / 10;
-        var axis = [-delta_y, delta_x, 0];
+        var axis = [delta_y, delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         var newRotationMatrix = mat4.create();
-        mat4.rotate(rotationMatrix, rotationMatrix, degreesToRadians(degrees), axis);
+        mat4.rotate(newRotationMatrix, newRotationMatrix, -degreesToRadians(degrees), axis);
+        mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     }
 }
 
