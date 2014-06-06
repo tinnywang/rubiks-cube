@@ -213,7 +213,7 @@ function drawRubiksCube() {
                 if (x == 0 && y == 0 && z == 0) {
                     continue;
                 }
-                mat4.translate(modelViewMatrix, modelViewMatrix, [x, y, z]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
                 drawCube();
                 setMatrixUniforms();
                 mat4.copy(modelViewMatrix, mvMatrix);
