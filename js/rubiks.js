@@ -18,6 +18,16 @@ var y_init;
 var x_new;
 var y_new;
 
+var CUBE_COLORS = {
+    'white' : [1.0, 1.0, 1.0, 1.0],
+    'red' : [1.0, 0.0, 0.0, 1.0],
+    'green' : [0.0, 1.0, 0.0, 1.0],
+    'blue' : [0.0, 0.0, 1.0, 1.0],
+    'yellow' : [1.0, 1.0, 0.0, 1.0],
+    'orange' : [1.0, 0.5, 0.0, 1.0],
+    'black' : [0.0, 0.0, 0.0, 1.0]
+}
+
 function initWebGL(canvas) {
     if (!window.WebGLRenderingContext) {
         console.log("Your browser doesn't support WebGL.")
@@ -157,26 +167,6 @@ function initCubeBuffer() {
     ]
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
                 new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
-
-    // cube colors
-    var colors = [
-        [1.0, 1.0, 1.0, 1.0], // front face: white
-        [1.0, 0.0, 0.0, 1.0], // back face: red
-        [0.0, 1.0, 0.0, 1.0], // top face: green
-        [0.0, 0.0, 1.0, 1.0], // bottom face: blue
-        [1.0, 1.0, 0.0, 1.0], // right face: yellow
-        [1.0, 0.5, 0.0, 1.0], // left face: orange
-    ]
-    var generatedColors = [];
-    for (var i = 0; i < 6; i++) {
-        var color = colors[i];
-        for (var j = 0; j < 4; j++) {
-            generatedColors = generatedColors.concat(color);
-        }
-    }
-    cubeVerticesColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesColorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(generatedColors), gl.STATIC_DRAW);
 }
 
 function drawScene() {
@@ -187,7 +177,7 @@ function drawScene() {
     drawRubiksCube();
 }
 
-function drawCube() {
+function drawCube(front_color, back_color, top_color, bottom_color, right_color, left_color) {
     initCubeBuffer();
     // cube vertices
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
@@ -199,7 +189,24 @@ function drawCube() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeOutlineBuffer);
     gl.drawElements(gl.LINE_LOOP, 30, gl.UNSIGNED_SHORT, 0);
     // cube colors
+    var colors = [
+        CUBE_COLORS[front_color],
+        CUBE_COLORS[back_color],
+        CUBE_COLORS[top_color],
+        CUBE_COLORS[bottom_color],
+        CUBE_COLORS[right_color],
+        CUBE_COLORS[left_color]
+    ]
+    var cubeColors = [];
+    for (var i = 0; i < 6; i++) {
+        var color = colors[i];
+        for (var j = 0; j < 4; j++) {
+            cubeColors = cubeColors.concat(color);
+        }
+    }
+    cubeVerticesColorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesColorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeColors), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
     // cube faces
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
@@ -224,7 +231,7 @@ function drawRubiksCube() {
                     continue;
                 }
                 mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
-                drawCube();
+                drawCube('blue', 'green', 'white', 'yellow', 'orange', 'red');
                 setMatrixUniforms();
                 mat4.copy(modelViewMatrix, mvMatrix);
             }
