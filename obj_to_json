@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+
+import json
+import sys
+
+vertices = []
+faces = []
+
+def parse(obj_file):
+    f = open(obj_file, 'r')
+    for line in f:
+        data = line.split()
+        definition = data[0]
+        if definition == 'v': # vertex
+            vertices.extend([float(x) for x in data[1:]])
+        elif definition == 'f': # face
+            faces.extend([int(x) - 1 for x in data[1:]])
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        sys.stderr.write('usage: obj_to_json obj_file\n')
+        sys.exit(1)
+    parse(sys.argv[1])
+    print json.dumps({'vertices': vertices, 'faces': faces})
