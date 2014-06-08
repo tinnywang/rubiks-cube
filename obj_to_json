@@ -4,7 +4,9 @@ import json
 import sys
 
 vertices = []
+vertex_normals = []
 faces = []
+face_normals = []
 
 def parse(obj_file):
     f = open(obj_file, 'r')
@@ -13,12 +15,23 @@ def parse(obj_file):
         definition = data[0]
         if definition == 'v': # vertex
             vertices.extend([float(x) for x in data[1:]])
-        elif definition == 'f': # face
-            faces.extend([int(x) - 1 for x in data[1:]])
+        elif definition == 'vn': # vertex normal
+            vertex_normals.extend([float(x) for x in data[1:]])
+        elif definition == 'f': # face, vertex/normal format
+            for vertex_normal in data[1:]:
+                vertex_normal = vertex_normal.split('//')
+                faces.append(int(vertex_normal[0]) - 1)
+                face_normals.append(int(vertex_normal[1]) - 1)
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         sys.stderr.write('usage: obj_to_json obj_file\n')
         sys.exit(1)
     parse(sys.argv[1])
-    print json.dumps({'vertices': vertices, 'faces': faces})
+    print json.dumps({
+        'vertices': vertices,
+        'vertex_normals': vertex_normals,
+        'faces': faces,
+        'face_normals': face_normals
+    })
+
