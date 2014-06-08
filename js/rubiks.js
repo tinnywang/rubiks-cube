@@ -7,7 +7,7 @@ var modelViewMatrix = mat4.create();
 var projectionMatrix = mat4.create();
 var rotationMatrix = mat4.create();
 var cubeVerticesBuffer;
-var cubeVerticesIndexBuffer;
+var cubeFacesBuffer;
 var cubeVerticesColorBuffer;
 var cubeOutlineBuffer;
 var cubeOutlineColorBuffer;
@@ -88,85 +88,15 @@ function initShaders() {
     gl.enableVertexAttribArray(vertexColor);
 }
 
-function initCubeBuffer() {
-    // cube outline
-    cubeOutlineBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeOutlineBuffer);
-    var cubeOutlineIndices = [
-        0,  1,  2,  3,  0,
-        4,  5,  6,  7,  4,
-        8,  9,  10, 11, 8,
-        12, 13, 14, 15, 12,
-        16, 17, 18, 19, 16,
-        20, 21, 22, 23, 20
-    ]
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeOutlineIndices), gl.STATIC_DRAW);
-
-    // cube outline colors
-    cubeOutlineColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeOutlineColorBuffer);
-    var cubeOutlineColors = []
-    var outlineColor = [0.0, 0.0, 0.0, 1.0];
-    for (var i = 0; i < 24; i++) {
-        cubeOutlineColors = cubeOutlineColors.concat(outlineColor);
-    }
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeOutlineColors), gl.STATIC_DRAW);
-
+function initCubeBuffers() {
     // cube vertices
     cubeVerticesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
-    var vertices = [
-        // Front face
-        -1.0, -1.0,  1.0,
-        1.0, -1.0,  1.0,
-        1.0,  1.0,  1.0,
-        -1.0,  1.0,  1.0,
-
-        // Back face
-        -1.0, -1.0, -1.0,
-        -1.0,  1.0, -1.0,
-        1.0,  1.0, -1.0,
-        1.0, -1.0, -1.0,
-
-        // Top face
-        -1.0,  1.0, -1.0,
-        -1.0,  1.0,  1.0,
-        1.0,  1.0,  1.0,
-        1.0,  1.0, -1.0,
-
-        // Bottom face
-        -1.0, -1.0, -1.0,
-        1.0, -1.0, -1.0,
-        1.0, -1.0,  1.0,
-        -1.0, -1.0,  1.0,
-
-        // Right face
-        1.0, -1.0, -1.0,
-        1.0,  1.0, -1.0,
-        1.0,  1.0,  1.0,
-        1.0, -1.0,  1.0,
-
-        // Left face
-        -1.0, -1.0, -1.0,
-        -1.0, -1.0,  1.0,
-        -1.0,  1.0,  1.0,
-        -1.0,  1.0, -1.0
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertices), gl.STATIC_DRAW);
     // cube faces
-    cubeVerticesIndexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
-    var cubeVertexIndices = [
-        0,  1,  2,      0,  2,  3,    // front
-        4,  5,  6,      4,  6,  7,    // back
-        8,  9,  10,     8,  10, 11,   // top
-        12, 13, 14,     12, 14, 15,   // bottom
-        16, 17, 18,     16, 18, 19,   // right
-        20, 21, 22,     20, 22, 23    // left
-    ]
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-                new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+    cubeFacesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeModel.faces), gl.STATIC_DRAW);
 }
 
 function drawScene() {
@@ -177,40 +107,22 @@ function drawScene() {
     drawRubiksCube();
 }
 
-function drawCube(front_color, back_color, top_color, bottom_color, right_color, left_color) {
-    initCubeBuffer();
+function drawCube() {
     // cube vertices
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
     gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
-    // cube outline
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeOutlineColorBuffer);
-    gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
-    gl.lineWidth(5.0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeOutlineBuffer);
-    gl.drawElements(gl.LINE_LOOP, 30, gl.UNSIGNED_SHORT, 0);
     // cube colors
-    var colors = [
-        CUBE_COLORS[front_color],
-        CUBE_COLORS[back_color],
-        CUBE_COLORS[top_color],
-        CUBE_COLORS[bottom_color],
-        CUBE_COLORS[right_color],
-        CUBE_COLORS[left_color]
-    ]
     var cubeColors = [];
-    for (var i = 0; i < 6; i++) {
-        var color = colors[i];
-        for (var j = 0; j < 4; j++) {
-            cubeColors = cubeColors.concat(color);
-        }
+    for (var i = 0; i < cubeModel.vertices.length; i++) {
+        cubeColors = cubeColors.concat(CUBE_COLORS['black']);
     }
     cubeVerticesColorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesColorBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeColors), gl.STATIC_DRAW);
     gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
     // cube faces
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
-    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
+    gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
 }
 
 function drawRubiksCube() {
@@ -231,7 +143,7 @@ function drawRubiksCube() {
                     continue;
                 }
                 mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
-                drawCube('blue', 'green', 'white', 'yellow', 'orange', 'red');
+                drawCube();
                 setMatrixUniforms();
                 mat4.copy(modelViewMatrix, mvMatrix);
             }
@@ -248,6 +160,7 @@ function start() {
     canvas = document.getElementById('glcanvas');
     gl = initWebGL(canvas);
     initShaders();
+    initCubeBuffers();
     if (gl) {
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
