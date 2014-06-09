@@ -2,31 +2,23 @@ var canvas;
 var gl;
 var shaderProgram;
 var vertexPosition;
-var vertexColor;
+var vertexNormal;
 var modelViewMatrix = mat4.create();
 var projectionMatrix = mat4.create();
 var rotationMatrix = mat4.create();
 var cubeVerticesBuffer;
+var cubeVertexNormalsBuffer;
 var cubeFacesBuffer;
-var cubeVerticesColorBuffer;
-var cubeOutlineBuffer;
-var cubeOutlineColorBuffer;
+
+var eye = [0, 0, -10];
+var center = [0, 0, 0];
+var up = [0, 1, 0];
 
 var mouseDown = false;
 var x_init;
 var y_init;
 var x_new;
 var y_new;
-
-var CUBE_COLORS = {
-    'white' : [1.0, 1.0, 1.0, 1.0],
-    'red' : [1.0, 0.0, 0.0, 1.0],
-    'green' : [0.0, 1.0, 0.0, 1.0],
-    'blue' : [0.0, 0.0, 1.0, 1.0],
-    'yellow' : [1.0, 1.0, 0.0, 1.0],
-    'orange' : [1.0, 0.5, 0.0, 1.0],
-    'black' : [0.0, 0.0, 0.0, 1.0]
-}
 
 function initWebGL(canvas) {
     if (!window.WebGLRenderingContext) {
@@ -84,16 +76,22 @@ function initShaders() {
     gl.useProgram(shaderProgram);
     vertexPosition = gl.getAttribLocation(shaderProgram, 'vertexPosition');
     gl.enableVertexAttribArray(vertexPosition);
-    vertexColor = gl.getAttribLocation(shaderProgram, 'vertexColor');
-    gl.enableVertexAttribArray(vertexColor);
+    vertexNormal = gl.getAttribLocation(shaderProgram, 'vertexNormal');
+    gl.enableVertexAttribArray(vertexNormal);
+    eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
+    gl.uniform3fv(eyePosition, eye);
 }
 
 function initCubeBuffers() {
-    // cube vertices
+    // vertices
     cubeVerticesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertices), gl.STATIC_DRAW);
-    // cube faces
+    // vertex normals
+    cubeVertexNormalsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertex_normals), gl.STATIC_DRAW);
+    // faces
     cubeFacesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeModel.faces), gl.STATIC_DRAW);
@@ -108,19 +106,13 @@ function drawScene() {
 }
 
 function drawCube() {
-    // cube vertices
+    // vertices
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
     gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
-    // cube colors
-    var cubeColors = [];
-    for (var i = 0; i < cubeModel.vertices.length; i++) {
-        cubeColors = cubeColors.concat(CUBE_COLORS['black']);
-    }
-    cubeVerticesColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesColorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeColors), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(vertexColor, 4, gl.FLOAT, false, 0, 0);
-    // cube faces
+    // vertex normals
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalsBuffer);
+    gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
+    // faces
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
     gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
 }
@@ -132,7 +124,7 @@ function drawRubiksCube() {
             0.1,
             100.0);
     mat4.identity(modelViewMatrix);
-    mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -10]);
+    mat4.lookAt(modelViewMatrix, [0, 0, -10], [0, 0, 0], [0, 1, 0]);
     mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
     var mvMatrix = mat4.create();
     mat4.copy(mvMatrix, modelViewMatrix);
@@ -177,6 +169,13 @@ function setMatrixUniforms() {
     gl.uniformMatrix4fv(projectionUniform, false, projectionMatrix);
     var modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
     gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
+    var _normalMatrix = mat4.create();
+    mat4.invert(_normalMatrix, modelViewMatrix);
+    mat4.transpose(_normalMatrix, _normalMatrix);
+    var normalMatrix = mat3.create();
+    mat3.fromMat4(normalMatrix, _normalMatrix);
+    var normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
+    gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix);
 }
 
 function degreesToRadians(degrees) {
@@ -189,10 +188,10 @@ function rotate(event) {
         y_new = event.pageY;
         delta_x = (x_new - x_init) / 10;
         delta_y = (y_new - y_init) / 10;
-        var axis = [delta_y, delta_x, 0];
+        var axis = [delta_y, -delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         var newRotationMatrix = mat4.create();
-        mat4.rotate(newRotationMatrix, newRotationMatrix, -degreesToRadians(degrees), axis);
+        mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
         mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     }
 }

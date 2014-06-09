@@ -12,20 +12,46 @@
         <script src="js/models.js"></script>
         <script src="js/rubiks.js"></script>
         <script id='fragmentShader' type='x-shader/x-fragment'>
-            varying lowp vec4 vColor;
+            varying highp vec4 position;
+            varying highp vec3 normal;
+
+            uniform highp vec3 eyePosition;
+
+            const highp vec4 ambient = vec4(0, 0, 0, 1);
+            const highp vec4 diffuse = vec4(0.3, 0.3, 0.3, 1);
+            const highp vec4 specular = vec4(0.7, 0.7, 0.7, 1);
+            const highp float shininess = 100.0;
+
+            const highp vec4 lightPosition = vec4(0, 0, 0, 1); // point light
+            const highp vec4 lightColor = vec4(1, 1, 1, 1);
+
             void main(void) {
-                gl_FragColor = vColor;
+                highp vec3 position = position.xyz / position.w;
+                highp vec3 eyeDirection = normalize(eyePosition - position);
+                highp vec3 lightPosition = lightPosition.xyz / lightPosition.w;
+                highp vec3 lightDirection = normalize(lightPosition - position);
+                highp vec3 halfAngle = normalize(lightDirection + eyeDirection);
+                highp vec4 diffuseTerm = diffuse * lightColor * max(dot(normal, lightDirection), 0.0);
+                highp vec4 specularTerm = specular * lightColor * pow(max(dot(normal, halfAngle), 0.0), shininess);
+                gl_FragColor = diffuseTerm + specularTerm + ambient;
             }
         </script>
         <script id='vertexShader' type='x-shader/x-vertex'>
             attribute vec3 vertexPosition;
+            attribute vec3 vertexNormal;
             attribute vec4 vertexColor;
+
             uniform mat4 modelViewMatrix;
             uniform mat4 projectionMatrix;
-            varying lowp vec4 vColor;
+            uniform mat3 normalMatrix;
+
+            varying vec4 position;
+            varying vec3 normal;
+
             void main(void) {
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(vertexPosition, 1.0);
-                vColor = vertexColor;
+                position = modelViewMatrix * vec4(vertexPosition, 1.0);
+                gl_Position = projectionMatrix * position;
+                normal = normalize(normalMatrix * vertexNormal);
             }
        </script>
     </head>
