@@ -1,24 +1,32 @@
 var canvas;
 var gl;
-var shaderProgram;
-var vertexPosition;
-var vertexNormal;
-var modelViewMatrix = mat4.create();
-var projectionMatrix = mat4.create();
-var rotationMatrix = mat4.create();
-var cubeVerticesBuffer;
-var cubeVertexNormalsBuffer;
-var cubeFacesBuffer;
-
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
 var up = [0, 1, 0];
-
 var mouseDown = false;
 var x_init;
 var y_init;
 var x_new;
 var y_new;
+
+var shaderProgram;
+var vertexPosition;
+var vertexNormal;
+var ambient;
+var diffuse;
+var specular;
+var shininess;
+
+var modelViewMatrix = mat4.create();
+var projectionMatrix = mat4.create();
+var rotationMatrix = mat4.create();
+
+var cubeVerticesBuffer;
+var cubeNormalsBuffer;
+var cubeFacesBuffer;
+var stickerVerticesBuffer;
+var stickerNormalsBuffer;
+var stickerFacesBuffer;
 
 function initWebGL(canvas) {
     if (!window.WebGLRenderingContext) {
@@ -80,6 +88,10 @@ function initShaders() {
     gl.enableVertexAttribArray(vertexNormal);
     eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
     gl.uniform3fv(eyePosition, eye);
+    ambient = gl.getUniformLocation(shaderProgram, 'ambient');
+    diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
+    specular = gl.getUniformLocation(shaderProgram, 'specular');
+    shininess = gl.getUniformLocation(shaderProgram, 'shininess');
 }
 
 function initCubeBuffers() {
@@ -87,14 +99,29 @@ function initCubeBuffers() {
     cubeVerticesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertices), gl.STATIC_DRAW);
-    // vertex normals
-    cubeVertexNormalsBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalsBuffer);
+    // normals
+    cubeNormalsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeNormalsBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertex_normals), gl.STATIC_DRAW);
     // faces
     cubeFacesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeModel.faces), gl.STATIC_DRAW);
+}
+
+function initStickerBuffers() {
+    // vertices
+    stickerVerticesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, stickerVerticesBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.vertices), gl.STATIC_DRAW);
+    // normals
+    stickerNormalsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, stickerNormalsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.vertex_normals), gl.STATIC_DRAW);
+    // faces
+    stickerFacesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stickerFacesBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(stickerModel.faces), gl.STATIC_DRAW);
 }
 
 function drawScene() {
@@ -106,11 +133,15 @@ function drawScene() {
 }
 
 function drawCube() {
+    gl.uniform4fv(ambient, cubeModel.ambient);
+    gl.uniform4fv(diffuse, cubeModel.diffuse);
+    gl.uniform4fv(specular, cubeModel.specular);
+    gl.uniform1f(shininess, cubeModel.shininess);
     // vertices
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
     gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
-    // vertex normals
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalsBuffer);
+    // normals
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeNormalsBuffer);
     gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
     // faces
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
@@ -153,6 +184,7 @@ function start() {
     gl = initWebGL(canvas);
     initShaders();
     initCubeBuffers();
+    initStickerBuffers();
     if (gl) {
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);

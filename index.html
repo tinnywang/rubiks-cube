@@ -16,11 +16,10 @@
             varying highp vec3 normal;
 
             uniform highp vec3 eyePosition;
-
-            const highp vec4 ambient = vec4(0, 0, 0, 1);
-            const highp vec4 diffuse = vec4(0.3, 0.3, 0.3, 1);
-            const highp vec4 specular = vec4(0.7, 0.7, 0.7, 1);
-            const highp float shininess = 100.0;
+            uniform highp vec4 ambient;
+            uniform highp vec4 diffuse;
+            uniform highp vec4 specular;
+            uniform highp float shininess;
 
             const highp vec4 lightPosition = vec4(0, 0, 0, 1); // point light
             const highp vec4 lightColor = vec4(1, 1, 1, 1);
