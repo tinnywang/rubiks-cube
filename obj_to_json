@@ -32,6 +32,5 @@ if __name__ == '__main__':
         'vertices': vertices,
         'vertex_normals': vertex_normals,
         'faces': faces,
-        'face_normals': face_normals
     })
 
