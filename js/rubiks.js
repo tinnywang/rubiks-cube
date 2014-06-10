@@ -28,6 +28,15 @@ var stickerVerticesBuffer;
 var stickerNormalsBuffer;
 var stickerFacesBuffer;
 
+var COLORS = {
+    'blue': [0.0, 0.0, 1.0, 1.0],
+    'green': [0.0, 1.0, 0.0, 1.0],
+    'orange': [1.0, 0.5, 0.0, 1.0],
+    'red': [1.0, 0.0, 0.0, 1.0],
+    'white': [1.0, 1.0, 1.0, 1.0],
+    'yellow': [1.0, 1.0, 0.0, 1.0]
+}
+
 function initWebGL(canvas) {
     if (!window.WebGLRenderingContext) {
         console.log("Your browser doesn't support WebGL.")
@@ -148,6 +157,22 @@ function drawCube() {
     gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
 }
 
+function drawSticker(color) {
+    gl.uniform4fv(ambient, color);
+    gl.uniform4fv(diffuse, stickerModel.diffuse);
+    gl.uniform4fv(specular, stickerModel.specular);
+    gl.uniform1f(shininess, stickerModel.shininess);
+    // vertices
+    gl.bindBuffer(gl.ARRAY_BUFFER, stickerVerticesBuffer);
+    gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
+    // normals
+    gl.bindBuffer(gl.ARRAY_BUFFER, stickerNormalsBuffer);
+    gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
+    // faces
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stickerFacesBuffer);
+    gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
+}
+
 function drawRubiksCube() {
     mat4.perspective(projectionMatrix,
             30,
@@ -166,8 +191,49 @@ function drawRubiksCube() {
                     continue;
                 }
                 mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
-                drawCube();
                 setMatrixUniforms();
+                drawCube();
+
+                var _mvMatrix = mat4.create();
+                mat4.copy(_mvMatrix, modelViewMatrix);
+                if (x == -1) {
+                    mat4.translate(modelViewMatrix, modelViewMatrix, [-1.001, 0, 0]);
+                    mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
+                    setMatrixUniforms();
+                    drawSticker(COLORS['red']);
+                    mat4.copy(modelViewMatrix, _mvMatrix);
+                } else if (x == 1) {
+                    mat4.translate(modelViewMatrix, modelViewMatrix, [1.001, 0, 0]);
+                    mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
+                    setMatrixUniforms();
+                    drawSticker(COLORS['orange']);
+                    mat4.copy(modelViewMatrix, _mvMatrix);
+                }
+                if (y == -1) {
+                    mat4.translate(modelViewMatrix, modelViewMatrix, [0, -1.001, 0]);
+                    mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
+                    setMatrixUniforms();
+                    drawSticker(COLORS['yellow']);
+                    mat4.copy(modelViewMatrix, _mvMatrix);
+                } else if (y == 1) {
+                    mat4.translate(modelViewMatrix, modelViewMatrix, [0, 1.001, 0]);
+                    setMatrixUniforms();
+                    drawSticker(COLORS['white']);
+                    mat4.copy(modelViewMatrix, _mvMatrix);
+                }
+                if (z == 1) {
+                    mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, 1.001]);
+                    mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
+                    setMatrixUniforms();
+                    drawSticker(COLORS['green']);
+                    mat4.copy(modelViewMatrix, _mvMatrix);
+                } else if (z == -1) {
+                    mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -1.001]);
+                    mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
+                    setMatrixUniforms();
+                    drawSticker(COLORS['blue']);
+                    mat4.copy(modelViewMatrix, _mvMatrix);
+                }
                 mat4.copy(modelViewMatrix, mvMatrix);
             }
         }
