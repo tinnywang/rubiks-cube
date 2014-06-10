@@ -284,8 +284,8 @@ function rotate(event) {
     if (mouseDown) {
         x_new = event.pageX;
         y_new = event.pageY;
-        delta_x = (x_new - x_init) / 10;
-        delta_y = (y_new - y_init) / 10;
+        delta_x = (x_new - x_init) / 50;
+        delta_y = (y_new - y_init) / 50;
         var axis = [delta_y, -delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         var newRotationMatrix = mat4.create();
@@ -295,17 +295,22 @@ function rotate(event) {
 }
 
 function startRotate(event) {
-    mouseDown = true;
-    x_init = event.pageX;
-    y_init = event.pageY;
+    if (event.button == 2) {
+        mouseDown = true;
+        x_init = event.pageX;
+        y_init = event.pageY;
+    }
 }
 
 function endRotate(event) {
-    mouseDown = false;
+    if (event.button == 2) {
+        mouseDown = false;
+    }
 }
 
 $(document).ready(function() {
     start();
+    $('#glcanvas').bind('contextmenu', function(e) { return false; });
     $('#glcanvas').mousedown(startRotate);
     $('#glcanvas').mousemove(rotate);
     $('#glcanvas').mouseup(endRotate);
