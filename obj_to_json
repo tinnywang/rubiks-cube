@@ -22,6 +22,9 @@ def parse(obj_file):
                 vertex_normal = vertex_normal.split('//')
                 faces.append(int(vertex_normal[0]) - 1)
                 face_normals.append(int(vertex_normal[1]) - 1)
+    # every vertex has the same normal
+    if len(vertices) != len(vertex_normals) and len(vertex_normals) == 3:
+        vertex_normals.extend(vertex_normals * (len(vertices) - 1))
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -33,4 +36,3 @@ if __name__ == '__main__':
         'vertex_normals': vertex_normals,
         'faces': faces,
     })
-
