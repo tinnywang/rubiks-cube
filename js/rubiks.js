@@ -18,6 +18,7 @@ var y_new_left;
 var shaderProgram;
 var vertexPosition;
 var vertexNormal;
+var lighting;
 var ambient;
 var diffuse;
 var specular;
@@ -134,6 +135,7 @@ function initShaders() {
     gl.enableVertexAttribArray(vertexNormal);
     eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
     gl.uniform3fv(eyePosition, eye);
+    lighting = gl.getUniformLocation(shaderProgram, 'lighting');
     ambient = gl.getUniformLocation(shaderProgram, 'ambient');
     diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
     specular = gl.getUniformLocation(shaderProgram, 'specular');
@@ -177,16 +179,18 @@ function drawScene() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniform1i(lighting, 0);
     drawRubiksCubeToFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniform1i(lighting, 1);
     drawRubiksCube();
 }
 
-function drawCube() {
-    gl.uniform4fv(ambient, cubeModel.ambient);
+function drawCube(color) {
+    gl.uniform4fv(ambient, color);
     gl.uniform4fv(diffuse, cubeModel.diffuse);
     gl.uniform4fv(specular, cubeModel.specular);
     gl.uniform1f(shininess, cubeModel.shininess);
@@ -236,7 +240,7 @@ function drawRubiksCubeToFramebuffer() {
                 }
                 mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
                 setMatrixUniforms();
-                drawCube();
+                drawCube([(x + 1) / 3, (y + 1) / 3, (z + 1) / 3, 1.0]);
                 mat4.copy(modelViewMatrix, mvMatrix);
             }
         }
@@ -262,7 +266,7 @@ function drawRubiksCube() {
                 }
                 mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
                 setMatrixUniforms();
-                drawCube();
+                drawCube(cubeModel.ambient);
 
                 var _mvMatrix = mat4.create();
                 mat4.copy(_mvMatrix, modelViewMatrix);
