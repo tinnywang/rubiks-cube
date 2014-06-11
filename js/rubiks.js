@@ -3,11 +3,17 @@ var gl;
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
 var up = [0, 1, 0];
-var mouseDown = false;
-var x_init;
-var y_init;
-var x_new;
-var y_new;
+
+var rightMouseDown = false;
+var x_init_right;
+var y_init_right;
+var x_new_right;
+var y_new_right;
+var leftMouseDown = false;
+var x_init_left;
+var y_init_left;
+var x_new_left;
+var y_new_left;
 
 var shaderProgram;
 var vertexPosition;
@@ -28,6 +34,10 @@ var stickerVerticesBuffer;
 var stickerNormalsBuffer;
 var stickerFacesBuffer;
 
+var pickingFramebuffer;
+var pickingTexture;
+var renderBuffer;
+
 var COLORS = {
     'blue': [0.0, 0.0, 1.0, 1.0],
     'green': [0.0, 1.0, 0.0, 1.0],
@@ -43,6 +53,8 @@ function initWebGL(canvas) {
             return null;
     }
     gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
     if (!gl) {
         console.log("Your browser supports WebGL, but initialization failed.");
         return null;
@@ -78,6 +90,31 @@ function getShader(gl, id) {
         return null;
     }
     return shader;
+}
+
+function initTextureFramebuffer() {
+    pickingFramebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
+
+    pickingTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, pickingTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+    renderBuffer = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, renderBuffer);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
+
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pickingTexture, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderBuffer);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 function initShaders() {
@@ -136,6 +173,13 @@ function initStickerBuffers() {
 function drawScene() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    drawRubiksCubeToFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     drawRubiksCube();
@@ -173,6 +217,32 @@ function drawSticker(color) {
     gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
 }
 
+function drawRubiksCubeToFramebuffer() {
+    mat4.perspective(projectionMatrix,
+            30,
+            canvas.width / canvas.height,
+            0.1,
+            100.0);
+    mat4.identity(modelViewMatrix);
+    mat4.lookAt(modelViewMatrix, eye, center, up);
+    mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
+    var mvMatrix = mat4.create();
+    mat4.copy(mvMatrix, modelViewMatrix);
+    for (var x = -1; x < 2; x++) {
+        for (var y = -1; y < 2; y++) {
+            for (var z = -1; z < 2; z++) {
+                if (x == 0 && y == 0 && z == 0) {
+                    continue;
+                }
+                mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
+                setMatrixUniforms();
+                drawCube();
+                mat4.copy(modelViewMatrix, mvMatrix);
+            }
+        }
+    }
+}
+
 function drawRubiksCube() {
     mat4.perspective(projectionMatrix,
             30,
@@ -180,7 +250,7 @@ function drawRubiksCube() {
             0.1,
             100.0);
     mat4.identity(modelViewMatrix);
-    mat4.lookAt(modelViewMatrix, [0, 0, -10], [0, 0, 0], [0, 1, 0]);
+    mat4.lookAt(modelViewMatrix, eye, center, up);
     mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
     var mvMatrix = mat4.create();
     mat4.copy(mvMatrix, modelViewMatrix);
@@ -248,6 +318,7 @@ function tick() {
 function start() {
     canvas = document.getElementById('glcanvas');
     gl = initWebGL(canvas);
+    initTextureFramebuffer();
     initShaders();
     initCubeBuffers();
     initStickerBuffers();
@@ -281,11 +352,11 @@ function degreesToRadians(degrees) {
 }
 
 function rotate(event) {
-    if (mouseDown) {
-        x_new = event.pageX;
-        y_new = event.pageY;
-        delta_x = (x_new - x_init) / 50;
-        delta_y = (y_new - y_init) / 50;
+    if (rightMouseDown) {
+        x_new_right = event.pageX;
+        y_new_right = event.pageY;
+        delta_x = (x_new_right - x_init_right) / 50;
+        delta_y = (y_new_right - y_init_right) / 50;
         var axis = [delta_y, -delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         var newRotationMatrix = mat4.create();
@@ -295,16 +366,22 @@ function rotate(event) {
 }
 
 function startRotate(event) {
-    if (event.button == 2) {
-        mouseDown = true;
-        x_init = event.pageX;
-        y_init = event.pageY;
+    if (event.button == 0) { // left mouse
+        leftMouseDown = true;
+        x_init_left = event.pageX;
+        y_init_left = event.pageY;
+    } else if (event.button == 2) { // right mouse
+        rightMouseDown = true;
+        x_init_right = event.pageX;
+        y_init_right = event.pageY;
     }
 }
 
 function endRotate(event) {
-    if (event.button == 2) {
-        mouseDown = false;
+    if (event.button == 0) { // left mouse
+        leftMouseDown = false;
+    } else if (event.button == 2) { // right mouse
+        rightMouseDown = false;
     }
 }
 
