@@ -53,7 +53,7 @@ function initWebGL(canvas) {
         console.log("Your browser doesn't support WebGL.")
             return null;
     }
-    gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    gl = canvas.getContext('webgl', {preserveDrawingBuffer: true}) || canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
     if (!gl) {
@@ -245,6 +245,7 @@ function drawRubiksCubeToFramebuffer() {
             }
         }
     }
+    mat4.copy(modelViewMatrix, mvMatrix);
 }
 
 function drawRubiksCube() {
@@ -355,6 +356,15 @@ function degreesToRadians(degrees) {
     return degrees * Math.PI / 180;
 }
 
+function findSelectedCube(x, y) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
+    var pixelValues = new Uint8Array(canvas.width * canvas.height * 4);
+    gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
+    var i = (x + y * canvas.width) * 4;
+    console.log(pixelValues.subarray(i, i + 4));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
 function rotate(event) {
     if (rightMouseDown) {
         x_new_right = event.pageX;
@@ -374,6 +384,7 @@ function startRotate(event) {
         leftMouseDown = true;
         x_init_left = event.pageX;
         y_init_left = event.pageY;
+        findSelectedCube(x_init_left, canvas.height - y_init_left);
     } else if (event.button == 2) { // right mouse
         rightMouseDown = true;
         x_init_right = event.pageX;
