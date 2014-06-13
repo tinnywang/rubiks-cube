@@ -77,11 +77,9 @@ function RubiksCube() {
                 for (var z = -1; z < 2; z++) {
                     var cube = this.cubes[x + 1][y + 1][z + 1];
                     cube.draw(cubeModel.ambient);
-                    /*
                     for (var i = 0; i < cube.stickers.length; i++) {
                         cube.stickers[i].draw();
                     }
-                    */
                     mat4.copy(modelViewMatrix, mvMatrix);
                 }
             }
@@ -115,39 +113,50 @@ function Cube(coordinates, color) {
     this.translationVector = vec3.create();
     vec3.scale(this.translationVector, this.coordinates, 2);
 
+    this.transform = function() {
+        mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
+        mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
+    }
+
     this.stickers = [];
     var x = this.coordinates[0];
     var y = this.coordinates[1];
     var z = this.coordinates[2];
     if (x == -1) {
-        this.stickers.push(new Sticker(COLORS['red'], function() {
+        this.stickers.push(new Sticker(this, COLORS['red'], function() {
+            this.cube.transform();
             mat4.translate(modelViewMatrix, modelViewMatrix, [-1.001, 0, 0]);
             mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
         }));
     } else if (x == 1) {
-        this.stickers.push(new Sticker(COLORS['orange'], function() {
+        this.stickers.push(new Sticker(this, COLORS['orange'], function() {
+            this.cube.transform();
             mat4.translate(modelViewMatrix, modelViewMatrix, [1.001, 0, 0]);
             mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
         }));
     }
     if (y == -1) {
-        this.stickers.push(new Sticker(COLORS['yellow'], function() {
+        this.stickers.push(new Sticker(this, COLORS['yellow'], function() {
+            this.cube.transform();
             mat4.translate(modelViewMatrix, modelViewMatrix, [0, -1.001, 0]);
             mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
         }));
     } else if (y == 1) {
-        this.stickers.push(new Sticker(COLORS['white'], function() {
+        this.stickers.push(new Sticker(this, COLORS['white'], function() {
+            this.cube.transform();
             mat4.translate(modelViewMatrix, modelViewMatrix, [0, 1.001, 0]);
             setMatrixUniforms();
         }));
     }
     if (z == 1) {
-        this.stickers.push(new Sticker(COLORS['green'], function() {
+        this.stickers.push(new Sticker(this, COLORS['green'], function() {
+            this.cube.transform();
             mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, 1.001]);
             mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
         }));
     } else if (z == -1) {
-        this.stickers.push(new Sticker(COLORS['blue'], function() {
+        this.stickers.push(new Sticker(this, COLORS['blue'], function() {
+            this.cube.transform();
             mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -1.001]);
             mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
         }));
@@ -156,8 +165,7 @@ function Cube(coordinates, color) {
     this.draw = function(color) {
         var mvMatrix = mat4.create();
         mat4.copy(mvMatrix, modelViewMatrix);
-        mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
-        mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
+        this.transform();
         setMatrixUniforms();
 
         gl.uniform4fv(ambient, color);
@@ -178,8 +186,9 @@ function Cube(coordinates, color) {
     }
 }
 
-function Sticker(color, transform) {
-    this.color = color
+function Sticker(cube, color, transform) {
+    this.cube = cube;
+    this.color = color;
     this.transform = transform;
     this.draw = function() {
         var mvMatrix = mat4.create();
@@ -200,6 +209,7 @@ function Sticker(color, transform) {
         // faces
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stickerFacesBuffer);
         gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
+
         mat4.copy(modelViewMatrix, mvMatrix);
     }
 }
