@@ -57,11 +57,13 @@ function RubiksCube() {
             this.cubes[x][y] = new Array(3);
             for (var z = 0; z < 3; z++) {
                 var coordinates = [x - 1, y - 1, z - 1];
-                var color = [x / 3, y / 3, z / 3];
+                var color = [x / 3, y / 3, z / 3, 1.0];
                 this.cubes[x][y][z] = new Cube(coordinates, color);
             }
         }
     }
+
+    this.selectedCube = null;
 
     this.draw = function() {
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
@@ -73,13 +75,13 @@ function RubiksCube() {
         for (var x = -1; x < 2; x++) {
             for (var y = -1; y < 2; y++) {
                 for (var z = -1; z < 2; z++) {
-                    mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
-                    setMatrixUniforms();
                     var cube = this.cubes[x + 1][y + 1][z + 1];
                     cube.draw(cubeModel.ambient);
+                    /*
                     for (var i = 0; i < cube.stickers.length; i++) {
                         cube.stickers[i].draw();
                     }
+                    */
                     mat4.copy(modelViewMatrix, mvMatrix);
                 }
             }
@@ -96,9 +98,8 @@ function RubiksCube() {
         for (var x = -1; x < 2; x++) {
             for (var y = -1; y < 2; y++) {
                 for (var z = -1; z < 2; z++) {
-                    mat4.translate(modelViewMatrix, modelViewMatrix, [2 * x, 2 * y, 2 * z]);
-                    setMatrixUniforms();
-                    this.cubes[x + 1][y + 1][z + 1].draw([(x + 1) / 3, (y + 1) / 3, (z + 1) / 3, 1.0]);
+                    var cube = this.cubes[x + 1][y + 1][z + 1];
+                    cube.draw([(x + 1) / 3, (y + 1) / 3, (z + 1) / 3, 1.0]);
                     mat4.copy(modelViewMatrix, mvMatrix);
                 }
             }
@@ -110,6 +111,10 @@ function RubiksCube() {
 function Cube(coordinates, color) {
     this.coordinates = coordinates;
     this.color = color;
+    this.rotationMatrix = mat4.create();
+    this.translationVector = vec3.create();
+    vec3.scale(this.translationVector, this.coordinates, 2);
+
     this.stickers = [];
     var x = this.coordinates[0];
     var y = this.coordinates[1];
@@ -149,6 +154,12 @@ function Cube(coordinates, color) {
     }
 
     this.draw = function(color) {
+        var mvMatrix = mat4.create();
+        mat4.copy(mvMatrix, modelViewMatrix);
+        mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
+        mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
+        setMatrixUniforms();
+
         gl.uniform4fv(ambient, color);
         gl.uniform4fv(diffuse, cubeModel.diffuse);
         gl.uniform4fv(specular, cubeModel.specular);
@@ -162,6 +173,8 @@ function Cube(coordinates, color) {
         // faces
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
         gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
+
+        mat4.copy(modelViewMatrix, mvMatrix);
     }
 }
 
@@ -377,9 +390,8 @@ function degreesToRadians(degrees) {
 function colorToCubeCoordinates(rgb) {
     var coordinates = [];
     for (i = 0; i < rgb.length; i++) {
-        coordinates.push(rgb[i] / 255 * 3 - 1);
+        coordinates.push(rgb[i] / 255 * 3);
     }
-    console.log(coordinates);
     return coordinates;
 }
 
@@ -387,21 +399,83 @@ function findSelectedCube(x, y) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
     var pixelValues = new Uint8Array(canvas.width * canvas.height * 4);
     gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
-    var i = (x + y * canvas.width) * 4;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    var i = (x + y * canvas.width) * 4;
+    var coordinates = colorToCubeCoordinates(pixelValues.subarray(i, i + 3));
+    if (coordinates[0] >= 3 || coordinates[1] >= 3 || coordinates[2] >= 3) { // clicked outside the cube
+        return null;
+    } else {
+        return rubiksCube.cubes[coordinates[0]][coordinates[1]][coordinates[2]];
+    }
+}
+
+/*
+ * Returns an array of cubes that share the same AXIS coordinate as CUBE.
+ * AXIS is 0, 1, or 2 for the x-, y-, or z-coordinate.
+ */
+function getCubesInLayer(cube, axis) {
+    var axisValue = cube.coordinates[axis] + 1;
+    var cubes = [];
+    var x, y, z;
+    if (axis == 0) { // x
+        for (y = 0; y < 3; y++) {
+            for (z = 0; z < 3; z++) {
+                cubes.push(rubiksCube.cubes[axisValue][y][z]);
+            }
+        }
+    } else if (axis == 1) { // y
+        for (x = 0; x < 3; x++) {
+            for (z = 0; z < 3; z++) {
+                cubes.push(rubiksCube.cubes[x][axisValue][z]);
+            }
+        }
+    } else if (axis == 2) { // z
+        for (x = 0; x < 3; x++) {
+            for (y = 0; y < 3; y++) {
+                cubes.push(rubiksCube.cubes[x][y][axisValue]);
+            }
+        }
+    }
+    return cubes;
+}
+
+/*
+ * Rotates CUBES around AXIS.  AXIS is 0, 1, or 2 for the x-, y-, or z-axis.
+ */
+
+function rotateLayer(cubes, axis, degrees) {
+    var newRotationMatrix = mat4.create();
+    mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
+    for (var i = 0; i < cubes.length; i++) {
+        var cube = cubes[i];
+        mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
+    }
 }
 
 function rotate(event) {
     if (rightMouseDown) {
         x_new_right = event.pageX;
         y_new_right = event.pageY;
-        delta_x = (x_new_right - x_init_right) / 50;
-        delta_y = (y_new_right - y_init_right) / 50;
+        var delta_x = (x_new_right - x_init_right) / 50;
+        var delta_y = (y_new_right - y_init_right) / 50;
         var axis = [delta_y, -delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         var newRotationMatrix = mat4.create();
         mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
         mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
+    } else if (leftMouseDown) {
+        if (!rubiksCube.selectedCube) {
+            return;
+        }
+        x_new_left = event.pageX;
+        y_new_left = event.pageY;
+        var delta_x = (x_new_left - x_init_left) / 50;
+        var delta_y = (y_new_left - y_init_left) / 50;
+        var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
+        // find all cubes in the same 'layer'
+        // we only do rotations around the y-axis for now
+        var cubes = getCubesInLayer(rubiksCube.selectedCube, 1);
+        rotateLayer(cubes, 1, degrees);
     }
 }
 
@@ -410,7 +484,7 @@ function startRotate(event) {
         leftMouseDown = true;
         x_init_left = event.pageX;
         y_init_left = event.pageY;
-        findSelectedCube(x_init_left, canvas.height - y_init_left);
+        rubiksCube.selectedCube = findSelectedCube(x_init_left, canvas.height - y_init_left);
     } else if (event.button == 2) { // right mouse
         rightMouseDown = true;
         x_init_right = event.pageX;
