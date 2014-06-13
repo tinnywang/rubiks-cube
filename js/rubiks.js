@@ -522,10 +522,12 @@ function rotate(event) {
 
 function startRotate(event) {
     if (event.button == 0) { // left mouse
-        leftMouseDown = true;
         x_init_left = event.pageX;
         y_init_left = event.pageY;
         rubiksCube.selectedCube = findSelectedCube(x_init_left, canvas.height - y_init_left);
+        if (rubiksCube.selectedCube) {
+            leftMouseDown = true;
+        }
     } else if (event.button == 2) { // right mouse
         rightMouseDown = true;
         x_init_right = event.pageX;
@@ -534,7 +536,7 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    if (event.button == 0) { // left mouse
+    if (event.button == 0 && leftMouseDown) { // left mouse
         leftMouseDown = false;
         updateCubeCoordinates(rubiksCube.rotatedCubes, rubiksCube.rotationAxis, rubiksCube.rotationAngle);
     } else if (event.button == 2) { // right mouse
