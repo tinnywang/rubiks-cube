@@ -50,6 +50,11 @@ var COLORS = {
 }
 
 function RubiksCube() {
+    this.selectedCube = null;
+    this.rotatedCubes = null;
+    this.rotationAxis = null;
+    this.rotationAngle = null;
+
     this.cubes = new Array(3);
     for (var x = 0; x < 3; x++) {
         this.cubes[x] = new Array(3);
@@ -62,8 +67,6 @@ function RubiksCube() {
             }
         }
     }
-
-    this.selectedCube = null;
 
     this.draw = function() {
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
@@ -110,6 +113,7 @@ function Cube(coordinates, color) {
     this.coordinates = coordinates;
     this.color = color;
     this.rotationMatrix = mat4.create();
+
     this.translationVector = vec3.create();
     vec3.scale(this.translationVector, this.coordinates, 2);
 
@@ -190,6 +194,7 @@ function Sticker(cube, color, transform) {
     this.cube = cube;
     this.color = color;
     this.transform = transform;
+
     this.draw = function() {
         var mvMatrix = mat4.create();
         mat4.copy(mvMatrix, modelViewMatrix)
@@ -449,6 +454,30 @@ function getCubesInLayer(cube, axis) {
     return cubes;
 }
 
+function updateCubeCoordinates(cubes, axis, degrees) {
+    var axes = [0, 1, 2];
+    var axis_1, axis_2;
+    axes.splice(axes.indexOf(axis), 1);
+    if (degrees > 0) {
+        axis_1 = 0;
+        axis_2 = 1;
+    } else {
+        axis_1 = 1;
+        axis_2 = 0;
+    }
+    for (var i = 0; i < cubes.length; i++) {
+        var cube = cubes[i];
+        var temp = cube.coordinates[axes[axis_1]];
+        cube.coordinates[axes[axis_1]] = cube.coordinates[axes[axis_2]];
+        cube.coordinates[axes[axis_2]] = -temp;
+
+        var x = cube.coordinates[0] + 1;
+        var y = cube.coordinates[1] + 1;
+        var z = cube.coordinates[2] + 1;
+        rubiksCube.cubes[x][y][z] = cube;
+    }
+}
+
 /*
  * Rotates CUBES around AXIS.  AXIS is 0, 1, or 2 for the x-, y-, or z-axis.
  */
@@ -484,8 +513,10 @@ function rotate(event) {
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         // find all cubes in the same 'layer'
         // we only do rotations around the y-axis for now
-        var cubes = getCubesInLayer(rubiksCube.selectedCube, 1);
-        rotateLayer(cubes, 1, degrees);
+        rubiksCube.rotatedCubes = getCubesInLayer(rubiksCube.selectedCube, 1);
+        rubiksCube.rotationAxis = 1;
+        rubiksCube.rotationAngle = -delta_x;
+        rotateLayer(rubiksCube.rotatedCubes, rubiksCube.rotationAxis, rubiksCube.rotationAngle);
     }
 }
 
@@ -505,6 +536,7 @@ function startRotate(event) {
 function endRotate(event) {
     if (event.button == 0) { // left mouse
         leftMouseDown = false;
+        updateCubeCoordinates(rubiksCube.rotatedCubes, rubiksCube.rotationAxis, rubiksCube.rotationAngle);
     } else if (event.button == 2) { // right mouse
         rightMouseDown = false;
     }
