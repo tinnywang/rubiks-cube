@@ -53,7 +53,7 @@ function RubiksCube() {
     this.selectedCube = null;
     this.rotatedCubes = null;
     this.rotationAxis = null;
-    this.rotationAngle = null;
+    this.rotationAngle = 0;
 
     this.cubes = new Array(3);
     this.cubesFromColors = new Array(3);
@@ -149,7 +149,8 @@ function RubiksCube() {
     this.rotateLayer = function(axis, degrees) {
         this.setRotatedCubes(axis);
         this.rotationAxis = axis;
-        this.rotationAngle = degrees;
+        this.rotationAngle += degrees;
+
         var newRotationMatrix = mat4.create();
         mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
         for (var i = 0; i < this.rotatedCubes.length; i++) {
@@ -158,11 +159,15 @@ function RubiksCube() {
         }
     }
 
+    /*
+     * Updates this.cubes to reflect changes in cubes' coordinates from layer rotations.
+     * Should be called after every (+/-)90 degree rotation of a layer.
+     */
     this.updateCubeCoordinates = function() {
         var axes = [0, 1, 2];
         var axis_1, axis_2;
         axes.splice(axes.indexOf(this.rotationAxis), 1);
-        if (rubiksCube.rotationAngle > 0) {
+        if (this.rotationAngle > 0) {
             axis_1 = 0;
             axis_2 = 1;
         } else {
@@ -178,7 +183,25 @@ function RubiksCube() {
             var x = cube.coordinates[0] + 1;
             var y = cube.coordinates[1] + 1;
             var z = cube.coordinates[2] + 1;
-            rubiksCube.cubes[x][y][z] = cube;
+            this.cubes[x][y][z] = cube;
+        }
+    }
+
+
+    /*
+     * Ensures that every rotation is a multiple of 90 degrees.
+     */
+    this.completeRotation = function() {
+        var rotations = Math.abs(Math.floor(this.rotationAngle / 90));
+        var degrees = this.rotationAngle % 90;
+        if (75 < degrees && degrees < 105) {
+            this.rotateLayer(1, 90 - degrees);
+            drawScene();
+            this.updateCubeCoordinates();
+            this.rotationAngle = 0;
+        }
+        for(; rotations > 0; rotations--) {
+            this.updateCubeCoordinates();
         }
     }
 
@@ -496,8 +519,6 @@ function degreesToRadians(degrees) {
     return degrees * Math.PI / 180;
 }
 
-
-
 function rotate(event) {
     if (rightMouseDown) {
         x_new_right = event.pageX;
@@ -540,7 +561,7 @@ function startRotate(event) {
 function endRotate(event) {
     if (event.button == 0 && leftMouseDown) { // left mouse
         leftMouseDown = false;
-        rubiksCube.updateCubeCoordinates();
+        rubiksCube.completeRotation();
     } else if (event.button == 2) { // right mouse
         rightMouseDown = false;
     }
