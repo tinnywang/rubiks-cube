@@ -56,14 +56,19 @@ function RubiksCube() {
     this.rotationAngle = null;
 
     this.cubes = new Array(3);
+    this.cubesFromColors = new Array(3);
     for (var x = 0; x < 3; x++) {
         this.cubes[x] = new Array(3);
+        this.cubesFromColors[x] = new Array(3);
         for (var y = 0; y < 3; y++) {
             this.cubes[x][y] = new Array(3);
+            this.cubesFromColors[x][y] = new Array(3);
             for (var z = 0; z < 3; z++) {
                 var coordinates = [x - 1, y - 1, z - 1];
                 var color = [x / 3, y / 3, z / 3, 1.0];
-                this.cubes[x][y][z] = new Cube(coordinates, color);
+                var cube = new Cube(coordinates, color);
+                this.cubes[x][y][z] = cube;
+                this.cubesFromColors[x][y][z] = cube;
             }
         }
     }
@@ -402,12 +407,15 @@ function degreesToRadians(degrees) {
     return degrees * Math.PI / 180;
 }
 
-function colorToCubeCoordinates(rgb) {
-    var coordinates = [];
-    for (i = 0; i < rgb.length; i++) {
-        coordinates.push(rgb[i] / 255 * 3);
+function colorToCube(rgba) {
+    var r = rgba[0] / 255 * 3;
+    var g = rgba[1] / 255 * 3;
+    var b = rgba[2] / 255 * 3;
+    if (r >= 3 || g >= 3 || b >= 3) { // clicked outside the cube
+        return null;
+    } else {
+        return rubiksCube.cubesFromColors[r][g][b];
     }
-    return coordinates;
 }
 
 function findSelectedCube(x, y) {
@@ -416,12 +424,7 @@ function findSelectedCube(x, y) {
     gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     var i = (x + y * canvas.width) * 4;
-    var coordinates = colorToCubeCoordinates(pixelValues.subarray(i, i + 3));
-    if (coordinates[0] >= 3 || coordinates[1] >= 3 || coordinates[2] >= 3) { // clicked outside the cube
-        return null;
-    } else {
-        return rubiksCube.cubes[coordinates[0]][coordinates[1]][coordinates[2]];
-    }
+    return colorToCube(pixelValues.subarray(i, i + 3));
 }
 
 /*
