@@ -49,7 +49,7 @@ var COLORS = {
     'yellow': [1.0, 1.0, 0.0, 1.0]
 }
 
-var MARGIN_OF_ERROR = 1e-6;
+var MARGIN_OF_ERROR = 1e-3;
 
 function RubiksCube() {
     this.selectedCube = null;
@@ -124,7 +124,9 @@ function RubiksCube() {
                 }
             }
         }
-        this.rotatedCubes = cubes;
+        if (cubes.length == 9) {
+            this.rotatedCubes = cubes;
+        }
     }
 
     /*
@@ -136,7 +138,12 @@ function RubiksCube() {
         this.rotationAngle += degrees;
 
         var newRotationMatrix = mat4.create();
-        mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
+        if (this.rotationAxis == 0) {
+            mat4.rotateX(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
+        } else if (this.rotationAxis == 1) {
+            mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
+        } else {
+        }
 
         for (var c in this.rotatedCubes) {
             var cube = this.rotatedCubes[c];
@@ -150,15 +157,19 @@ function RubiksCube() {
      */
     this.completeRotation = function() {
         var degrees = this.rotationAngle % 90;
-        if (degrees < 15) {
-            this.rotateLayer(1, -degrees);
+        if (Math.abs(degrees) < 15) {
+            this.rotateLayer(this.rotationAxis, -degrees);
             drawScene();
             this.rotationAngle = 0;
-        } else if (90 - degrees < 15) {
-            this.rotateLayer(1, 90 - degrees);
+        } else if (90 - Math.abs(degrees) < 15) {
+            degrees = degrees < 0 ? -90 - degrees : 90 - degrees;
+            this.rotateLayer(this.rotationAxis, degrees);
             drawScene();
             this.rotationAngle = 0;
         }
+
+        this.rotatedCubes = null;
+        this.rotationAxis = null;
     }
 
     this.colorToCube = function(rgba) {
@@ -486,16 +497,24 @@ function rotate(event) {
         var newRotationMatrix = mat4.create();
         mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
         mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
-    } else if (leftMouseDown) {
-        if (!rubiksCube.selectedCube) {
-            return;
-        }
+    } else if (leftMouseDown && rubiksCube.selectedCube) {
         x_new_left = event.pageX;
         y_new_left = event.pageY;
         var delta_x = (x_new_left - x_init_left) / 50;
         var delta_y = (y_new_left - y_init_left) / 50;
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
-        rubiksCube.rotateLayer(1, degrees);
+        if (Math.abs(delta_y) > Math.abs(delta_x) * 2) {
+            if (delta_y > 0) {
+                degrees = -degrees;
+            }
+            rubiksCube.rotateLayer(0, -degrees);
+        } else if (Math.abs(delta_x) > Math.abs(delta_y) * 2) {
+            if (delta_x > 0) {
+                degrees = -degrees;
+            }
+            rubiksCube.rotateLayer(1, degrees);
+        } else {
+        }
     }
 }
 
@@ -515,7 +534,7 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    if (event.button == 0 && leftMouseDown) { // left mouse
+    if (event.button == 0 && leftMouseDown && rubiksCube.selectedCube) { // left mouse
         leftMouseDown = false;
         rubiksCube.completeRotation();
     } else if (event.button == 2) { // right mouse
