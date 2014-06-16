@@ -49,26 +49,22 @@ var COLORS = {
     'yellow': [1.0, 1.0, 0.0, 1.0]
 }
 
+var MARGIN_OF_ERROR = 1e-6;
+
 function RubiksCube() {
     this.selectedCube = null;
     this.rotatedCubes = null;
     this.rotationAxis = null;
     this.rotationAngle = 0;
-
     this.cubes = new Array(3);
-    this.cubesFromColors = new Array(3);
-    for (var x = 0; x < 3; x++) {
-        this.cubes[x] = new Array(3);
-        this.cubesFromColors[x] = new Array(3);
-        for (var y = 0; y < 3; y++) {
-            this.cubes[x][y] = new Array(3);
-            this.cubesFromColors[x][y] = new Array(3);
-            for (var z = 0; z < 3; z++) {
-                var coordinates = [x - 1, y - 1, z - 1];
-                var color = [x / 3, y / 3, z / 3, 1.0];
-                var cube = new Cube(coordinates, color);
-                this.cubes[x][y][z] = cube;
-                this.cubesFromColors[x][y][z] = cube;
+    for (var r = 0; r < 3; r++) {
+        this.cubes[r] = new Array(3);
+        for (var g = 0; g < 3; g++) {
+            this.cubes[r][g] = new Array(3);
+            for (var b = 0; b < 3; b++) {
+                var coordinates = [r - 1, g - 1, b - 1];
+                var color = [r / 3, g / 3, b / 3, 1.0];
+                this.cubes[r][g][b] = new Cube(coordinates, color);
             }
         }
     }
@@ -80,13 +76,13 @@ function RubiksCube() {
         mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
         var mvMatrix = mat4.create();
         mat4.copy(mvMatrix, modelViewMatrix);
-        for (var x = -1; x < 2; x++) {
-            for (var y = -1; y < 2; y++) {
-                for (var z = -1; z < 2; z++) {
-                    var cube = this.cubes[x + 1][y + 1][z + 1];
+        for (var r = 0; r < 3; r++) {
+            for (var g = 0; g < 3; g++) {
+                for (var b = 0; b < 3; b++) {
+                    var cube = this.cubes[r][g][b];
                     cube.draw(cubeModel.ambient);
-                    for (var i = 0; i < cube.stickers.length; i++) {
-                        cube.stickers[i].draw();
+                    for (var s in cube.stickers) {
+                        cube.stickers[s].draw();
                     }
                     mat4.copy(modelViewMatrix, mvMatrix);
                 }
@@ -101,16 +97,14 @@ function RubiksCube() {
         mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
         var mvMatrix = mat4.create();
         mat4.copy(mvMatrix, modelViewMatrix);
-        for (var x = -1; x < 2; x++) {
-            for (var y = -1; y < 2; y++) {
-                for (var z = -1; z < 2; z++) {
-                    var cube = this.cubes[x + 1][y + 1][z + 1];
-                    cube.draw([(x + 1) / 3, (y + 1) / 3, (z + 1) / 3, 1.0]);
-                    mat4.copy(modelViewMatrix, mvMatrix);
+        for (var r = 0; r < 3; r++) {
+            for (var g = 0; g < 3; g++) {
+                for (var b = 0; b < 3; b++) {
+                    var cube = this.cubes[r][g][b];
+                    cube.draw(cube.color);
                 }
             }
         }
-        mat4.copy(modelViewMatrix, mvMatrix);
     }
 
     /*
@@ -118,25 +112,15 @@ function RubiksCube() {
      * AXIS is 0, 1, or 2 for the x-, y-, or z-coordinate.
      */
     this.setRotatedCubes = function(axis) {
-        var axisValue = this.selectedCube.coordinates[axis] + 1;
+        var value = this.selectedCube.coordinates[axis];
         var cubes = [];
-        var x, y, z;
-        if (axis == 0) { // x
-            for (y = 0; y < 3; y++) {
-                for (z = 0; z < 3; z++) {
-                    cubes.push(this.cubes[axisValue][y][z]);
-                }
-            }
-        } else if (axis == 1) { // y
-            for (x = 0; x < 3; x++) {
-                for (z = 0; z < 3; z++) {
-                    cubes.push(this.cubes[x][axisValue][z]);
-                }
-            }
-        } else if (axis == 2) { // z
-            for (x = 0; x < 3; x++) {
-                for (y = 0; y < 3; y++) {
-                    cubes.push(this.cubes[x][y][axisValue]);
+        for (var r = 0; r < 3; r++) {
+            for (var g = 0; g < 3; g++) {
+                for (var b = 0; b < 3; b++) {
+                    var cube = this.cubes[r][g][b];
+                    if (Math.abs(cube.coordinates[axis] - value) < MARGIN_OF_ERROR) {
+                        cubes.push(cube);
+                    }
                 }
             }
         }
@@ -153,66 +137,38 @@ function RubiksCube() {
 
         var newRotationMatrix = mat4.create();
         mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
-        for (var i = 0; i < this.rotatedCubes.length; i++) {
-            var cube = this.rotatedCubes[i];
+
+        for (var c in this.rotatedCubes) {
+            var cube = this.rotatedCubes[c];
+            vec3.transformMat4(cube.coordinates, cube.coordinates, newRotationMatrix);
             mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
         }
     }
 
     /*
-     * Updates this.cubes to reflect changes in cubes' coordinates from layer rotations.
-     * Should be called after every (+/-)90 degree rotation of a layer.
-     */
-    this.updateCubeCoordinates = function() {
-        var axes = [0, 1, 2];
-        var axis_1, axis_2;
-        axes.splice(axes.indexOf(this.rotationAxis), 1);
-        if (this.rotationAngle > 0) {
-            axis_1 = 0;
-            axis_2 = 1;
-        } else {
-            axis_1 = 1;
-            axis_2 = 0;
-        }
-        for (var i = 0; i < this.rotatedCubes.length; i++) {
-            var cube = this.rotatedCubes[i];
-            var temp = cube.coordinates[axes[axis_1]];
-            cube.coordinates[axes[axis_1]] = cube.coordinates[axes[axis_2]];
-            cube.coordinates[axes[axis_2]] = -temp;
-
-            var x = cube.coordinates[0] + 1;
-            var y = cube.coordinates[1] + 1;
-            var z = cube.coordinates[2] + 1;
-            this.cubes[x][y][z] = cube;
-        }
-    }
-
-
-    /*
      * Ensures that every rotation is a multiple of 90 degrees.
      */
     this.completeRotation = function() {
-        var rotations = Math.abs(Math.floor(this.rotationAngle / 90));
         var degrees = this.rotationAngle % 90;
-        if (75 < degrees && degrees < 105) {
+        if (degrees < 15) {
+            this.rotateLayer(1, -degrees);
+            drawScene();
+            this.rotationAngle = 0;
+        } else if (90 - degrees < 15) {
             this.rotateLayer(1, 90 - degrees);
             drawScene();
-            this.updateCubeCoordinates();
             this.rotationAngle = 0;
-        }
-        for(; rotations > 0; rotations--) {
-            this.updateCubeCoordinates();
         }
     }
 
     this.colorToCube = function(rgba) {
-        var r = rgba[0] / 255 * 3;
-        var g = rgba[1] / 255 * 3;
-        var b = rgba[2] / 255 * 3;
-        if (r >= 3 || g >= 3 || b >= 3) { // clicked outside the cube
+        var r = rgba[0];
+        var g = rgba[1];
+        var b = rgba[2];
+        if (r == 255 && g == 255 && b == 255) { // clicked outside the cube
             return null;
         } else {
-            return this.cubesFromColors[r][g][b];
+            return this.cubes[r % 3][g % 3][b % 3];
         }
     }
 
