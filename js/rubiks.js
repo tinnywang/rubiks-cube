@@ -1,5 +1,4 @@
-var canvas;
-var gl;
+var canvas; var gl;
 var rubiksCube;
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
@@ -49,7 +48,7 @@ var COLORS = {
     'yellow': [1.0, 1.0, 0.0, 1.0]
 }
 
-var MARGIN_OF_ERROR = 1e-3;
+var MARGIN_OF_ERROR = 1e-5;
 
 function RubiksCube() {
     this.selectedCube = null;
@@ -157,21 +156,13 @@ function RubiksCube() {
     }
 
     /*
-     * Ensures that every rotation is a multiple of 90 degrees.
+     * Ensures that every rotation is a multiple of 5 degrees.
      */
     this.completeRotation = function() {
-        var degrees = this.rotationAngle % 90;
-        if (Math.abs(degrees) < 15) {
-            this.rotateLayer(this.rotationAxis, -degrees);
-            drawScene();
-            this.rotationAngle = 0;
-        } else if (90 - Math.abs(degrees) < 15) {
-            degrees = degrees < 0 ? -90 - degrees : 90 - degrees;
-            this.rotateLayer(this.rotationAxis, degrees);
-            drawScene();
-            this.rotationAngle = 0;
-        }
-
+        var degrees = this.rotationAngle % 5;
+        this.rotateLayer(this.rotationAxis, -degrees);
+        drawScene();
+        this.rotationAngle = 0;
         this.rotatedCubes = null;
         this.rotationAxis = null;
     }
