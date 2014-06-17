@@ -133,6 +133,10 @@ function RubiksCube() {
      * Rotates CUBES around AXIS.  AXIS is 0, 1, or 2 for the x-, y-, or z-axis.
      */
     this.rotateLayer = function(axis, degrees) {
+        if (this.rotationAxis != null && axis != this.rotationAxis) {
+            return;
+        }
+
         this.setRotatedCubes(axis);
         this.rotationAxis = axis;
         this.rotationAngle += degrees;
