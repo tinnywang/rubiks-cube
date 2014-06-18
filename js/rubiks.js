@@ -51,6 +51,11 @@ var COLORS = {
 }
 var DEGREES = 5;
 var MARGIN_OF_ERROR = 1e-3;
+var X_AXIS = 0;
+var Y_AXIS = 1;
+var Z_AXIS = 2;
+var LEFT_MOUSE = 0;
+var RIGHT_MOUSE = 2;
 
 function RubiksCube() {
     this.selectedCube = null;
@@ -145,9 +150,9 @@ function RubiksCube() {
         this.rotationAngle += this.degrees;
 
         var newRotationMatrix = mat4.create();
-        if (this.rotationAxis == 0) {
+        if (this.rotationAxis == X_AXIS) {
             mat4.rotateX(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees));
-        } else if (this.rotationAxis == 1) {
+        } else if (this.rotationAxis == Y_AXIS) {
             mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees));
         } else {
         }
@@ -496,10 +501,10 @@ function rotate(event) {
         var axis = null;
         if (Math.abs(delta_y) > Math.abs(delta_x) * 2) {
             rubiksCube.degrees = delta_y < 0 ? -DEGREES : DEGREES;
-            axis = 0;
+            axis = X_AXIS;
         } else if (Math.abs(delta_x) > Math.abs(delta_y) * 2) {
             rubiksCube.degrees = delta_x > 0 ? -DEGREES : DEGREES;
-            axis = 1;
+            axis = Y_AXIS;
         } else {
         }
         rubiksCube.setRotatedCubes(axis);
@@ -508,14 +513,14 @@ function rotate(event) {
 }
 
 function startRotate(event) {
-    if (event.button == 0) { // left mouse
+    if (event.button == LEFT_MOUSE) { // left mouse
         x_init_left = event.pageX;
         y_init_left = event.pageY;
         rubiksCube.selectCube(x_init_left, canvas.height - y_init_left);
         if (rubiksCube.selectedCube) {
             leftMouseDown = true;
         }
-    } else if (event.button == 2) { // right mouse
+    } else if (event.button == RIGHT_MOUSE) { // right mouse
         rightMouseDown = true;
         x_init_right = event.pageX;
         y_init_right = event.pageY;
@@ -523,9 +528,9 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    if (event.button == 0 && leftMouseDown) { // left mouse
+    if (event.button == LEFT_MOUSE && leftMouseDown) { // left mouse
         leftMouseDown = false;
-    } else if (event.button == 2) { // right mouse
+    } else if (event.button == RIGHT_MOUSE) { // right mouse
         rightMouseDown = false;
     }
 }
