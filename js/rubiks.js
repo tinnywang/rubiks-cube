@@ -1,5 +1,4 @@
-var canvas;
-var gl;
+var canvas; var gl;
 var rubiksCube;
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
