@@ -10,10 +10,8 @@ var y_init_right;
 var x_new_right;
 var y_new_right;
 var leftMouseDown = false;
-var x_init_left;
-var y_init_left;
-var x_new_left;
-var y_new_left;
+var init_coordinates;
+var new_coordinates;
 var isRotating = false;
 
 var shaderProgram;
@@ -176,11 +174,10 @@ function RubiksCube() {
 
     this.selectCube = function(x, y) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
-        var pixelValues = new Uint8Array(canvas.width * canvas.height * 4);
-        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
+        var pixelValues = new Uint8Array(4);
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        var i = (x + y * canvas.width) * 4;
-        this.selectedCube = this.colorToCube(pixelValues.subarray(i, i + 3));
+        this.selectedCube = this.colorToCube(pixelValues);
     }
 }
 
@@ -477,6 +474,37 @@ function setMatrixUniforms() {
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix);
 }
 
+function unproject(dest, vec, view, proj, viewport) {
+    var m = mat4.create();
+    var v = vec4.create();
+
+    v[0] = (vec[0] - viewport[0]) * 2.0 / viewport[2] - 1.0;
+    v[1] = (vec[1] - viewport[1]) * 2.0 / viewport[3] - 1.0;
+    v[2] = 2.0 * vec[2] - 1.0;
+    v[3] = 1.0;
+
+    mat4.multiply(m, proj, view);
+    mat4.invert(m, m);
+
+    vec4.transformMat4(v, v, m);
+    if (v[3] == 0.0) {
+        return null;
+    }
+
+    dest[0] = v[0] / v[3];
+    dest[1] = v[1] / v[3];
+    dest[2] = v[2] / v[3];
+
+    return dest;
+}
+
+function screenToObjectCoordinates(x, y) {
+    var objectCoordinates = vec3.create();
+    var screenCoordinates = [x, y, 0];
+    unproject(objectCoordinates, screenCoordinates, modelViewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
+    return objectCoordinates;
+}
+
 function degreesToRadians(degrees) {
     return degrees * Math.PI / 180;
 }
@@ -493,30 +521,22 @@ function rotate(event) {
         mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
         mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     } else if (leftMouseDown && !isRotating) {
-        x_new_left = event.pageX;
-        y_new_left = event.pageY;
-        var delta_x = x_new_left - x_init_left;
-        var delta_y = y_new_left - y_init_left;
-        var axis = null;
-        if (Math.abs(delta_y) > Math.abs(delta_x) * 2) {
-            rubiksCube.degrees = delta_y < 0 ? -DEGREES : DEGREES;
-            axis = X_AXIS;
-        } else if (Math.abs(delta_x) > Math.abs(delta_y) * 2) {
-            rubiksCube.degrees = delta_x > 0 ? -DEGREES : DEGREES;
-            axis = Y_AXIS;
-        } else {
-        }
+        new_coordinates = screenToObjectCoordinates(event.pageX, canvas.height - event.pageY);
+        var direction = vec3.create();
+        vec3.subtract(direction, new_coordinates, init_coordinates);
+        vec3.normalize(direction, direction);
+        /*
         rubiksCube.setRotatedCubes(axis);
         isRotating = true;
+        */
     }
 }
 
 function startRotate(event) {
     if (event.button == LEFT_MOUSE) { // left mouse
-        x_init_left = event.pageX;
-        y_init_left = event.pageY;
-        rubiksCube.selectCube(x_init_left, canvas.height - y_init_left);
+        rubiksCube.selectCube(event.pageX, canvas.height - event.pageY);
         if (rubiksCube.selectedCube) {
+            init_coordinates = screenToObjectCoordinates(event.pageX, canvas.height - event.pageY);
             leftMouseDown = true;
         }
     } else if (event.button == RIGHT_MOUSE) { // right mouse
