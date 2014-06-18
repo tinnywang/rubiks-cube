@@ -49,7 +49,7 @@ var COLORS = {
     'white': [1.0, 1.0, 1.0, 1.0],
     'yellow': [1.0, 1.0, 0.0, 1.0]
 }
-
+var DEGREES = 5;
 var MARGIN_OF_ERROR = 1e-3;
 
 function RubiksCube() {
@@ -57,6 +57,7 @@ function RubiksCube() {
     this.rotatedCubes = null;
     this.rotationAxis = null;
     this.rotationAngle = 0;
+    this.degrees = DEGREES;
     this.cubes = new Array(3);
     for (var r = 0; r < 3; r++) {
         this.cubes[r] = new Array(3);
@@ -132,22 +133,22 @@ function RubiksCube() {
     }
 
     /*
-     * Rotates CUBES around AXIS.  AXIS is 0, 1, or 2 for the x-, y-, or z-axis.
+     * Rotates this.rotatedCubes around this.rotationAxis by this.degrees.
      */
-    this.rotateLayer = function(axis, degrees) {
-        if (this.rotationAngle == 90) {
+    this.rotateLayer = function() {
+        if (Math.abs(this.rotationAngle) == 90) {
             this.rotationAngle = 0;
             isRotating = false;
             return;
         }
 
-        this.rotationAngle += degrees;
+        this.rotationAngle += this.degrees;
 
         var newRotationMatrix = mat4.create();
         if (this.rotationAxis == 0) {
-            mat4.rotateX(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
+            mat4.rotateX(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees));
         } else if (this.rotationAxis == 1) {
-            mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees));
+            mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees));
         } else {
         }
 
@@ -418,7 +419,7 @@ function drawScene() {
     canvas.height = canvas.clientHeight;
 
     if (isRotating) {
-        rubiksCube.rotateLayer(rubiksCube.axis, 5);
+        rubiksCube.rotateLayer();
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
@@ -488,26 +489,21 @@ function rotate(event) {
         mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
         mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     } else if (leftMouseDown && !isRotating) {
-        isRotating = true;
         x_new_left = event.pageX;
         y_new_left = event.pageY;
-        var delta_x = (x_new_left - x_init_left) / 50;
-        var delta_y = (y_new_left - y_init_left) / 50;
-        var degrees = 1;
+        var delta_x = x_new_left - x_init_left;
+        var delta_y = y_new_left - y_init_left;
         var axis = null;
         if (Math.abs(delta_y) > Math.abs(delta_x) * 2) {
-            if (delta_y > 0) {
-                degrees = -degrees;
-            }
+            rubiksCube.degrees = delta_y < 0 ? -DEGREES : DEGREES;
             axis = 0;
         } else if (Math.abs(delta_x) > Math.abs(delta_y) * 2) {
-            if (delta_x > 0) {
-                degrees = -degrees;
-            }
+            rubiksCube.degrees = delta_x > 0 ? -DEGREES : DEGREES;
             axis = 1;
         } else {
         }
         rubiksCube.setRotatedCubes(axis);
+        isRotating = true;
     }
 }
 
