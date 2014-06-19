@@ -1,6 +1,7 @@
 var canvas;
 var gl;
 var rubiksCube;
+var shaderProgram;
 
 var rightMouseDown = false;
 var x_init_right;
@@ -11,17 +12,6 @@ var leftMouseDown = false;
 var init_coordinates;
 var new_coordinates;
 var isRotating = false;
-
-var shaderProgram;
-var vertexPosition;
-var vertexNormal;
-var vertexColor;
-var lighting;
-var ambient;
-var diffuse;
-var specular;
-var shininess;
-
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
 var up = [0, 1, 0];
@@ -153,7 +143,7 @@ function RubiksCube() {
         gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.pickingFramebuffer);
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.uniform1i(lighting, 0);
+        gl.uniform1i(shaderProgram.lighting, 0);
 
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
@@ -169,7 +159,7 @@ function RubiksCube() {
             }
         }
 
-        gl.uniform1i(lighting, 1);
+        gl.uniform1i(shaderProgram.lighting, 1);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
@@ -359,16 +349,16 @@ function Cube(rubiksCube, coordinates, color) {
         this.transform();
         setMatrixUniforms();
 
-        gl.uniform4fv(ambient, color);
-        gl.uniform4fv(diffuse, cubeModel.diffuse);
-        gl.uniform4fv(specular, cubeModel.specular);
-        gl.uniform1f(shininess, cubeModel.shininess);
+        gl.uniform4fv(shaderProgram.ambient, color);
+        gl.uniform4fv(shaderProgram.diffuse, cubeModel.diffuse);
+        gl.uniform4fv(shaderProgram.specular, cubeModel.specular);
+        gl.uniform1f(shaderProgram.shininess, cubeModel.shininess);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
-        gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         // normals
         gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeNormalsBuffer);
-        gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
         gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
@@ -388,16 +378,16 @@ function Sticker(cube, color, transform) {
         this.transform();
         setMatrixUniforms();
 
-        gl.uniform4fv(ambient, this.color);
-        gl.uniform4fv(diffuse, stickerModel.diffuse);
-        gl.uniform4fv(specular, stickerModel.specular);
-        gl.uniform1f(shininess, stickerModel.shininess);
+        gl.uniform4fv(shaderProgram.ambient, this.color);
+        gl.uniform4fv(shaderProgram.diffuse, stickerModel.diffuse);
+        gl.uniform4fv(shaderProgram.specular, stickerModel.specular);
+        gl.uniform1f(shaderProgram.shininess, stickerModel.shininess);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerVerticesBuffer);
-        gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         // normals
         gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerNormalsBuffer);
-        gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cube.rubiksCube.stickerFacesBuffer);
         gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
@@ -483,26 +473,26 @@ function NormalsCube() {
         mat4.scale(modelViewMatrix, modelViewMatrix, [3, 3, 3]);
         setMatrixUniforms();
 
-        gl.uniform1i(lighting, 0);
+        gl.uniform1i(shaderProgram.lighting, 0);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
-        gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
         // normals
         gl.bindBuffer(gl.ARRAY_BUFFER, this.normalsBuffer);
-        gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.facesBuffer);
         var offset = 0;
         for (var c in this.COLORS) {
             var color = this.COLORS[c];
-            gl.uniform4fv(ambient, this.COLORS[c]);
+            gl.uniform4fv(shaderProgram.ambient, this.COLORS[c]);
             gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, offset);
             gl.drawElements(gl.TRIANGLES, 3, gl.UNSIGNED_SHORT, offset + normalsCubeModel.faces.length)
             offset += 6;
         }
 
         mat4.copy(modelViewMatrix, mvMatrix);
-        gl.uniform1i(lighting, 1);
+        gl.uniform1i(shaderProgram.lighting, 1);
     }
 
     this.colorToNormal = function(rgba) {
@@ -583,17 +573,17 @@ function initShaders() {
         console.log('Unable to initialize the shader program');
     }
     gl.useProgram(shaderProgram);
-    vertexPosition = gl.getAttribLocation(shaderProgram, 'vertexPosition');
-    gl.enableVertexAttribArray(vertexPosition);
-    vertexNormal = gl.getAttribLocation(shaderProgram, 'vertexNormal');
-    gl.enableVertexAttribArray(vertexNormal);
-    eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
-    gl.uniform3fv(eyePosition, eye);
-    lighting = gl.getUniformLocation(shaderProgram, 'lighting');
-    ambient = gl.getUniformLocation(shaderProgram, 'ambient');
-    diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
-    specular = gl.getUniformLocation(shaderProgram, 'specular');
-    shininess = gl.getUniformLocation(shaderProgram, 'shininess');
+    shaderProgram.vertexPosition = gl.getAttribLocation(shaderProgram, 'vertexPosition');
+    gl.enableVertexAttribArray(shaderProgram.vertexPosition);
+    shaderProgram.vertexNormal = gl.getAttribLocation(shaderProgram, 'vertexNormal');
+    gl.enableVertexAttribArray(shaderProgram.vertexNormal);
+    shaderProgram.eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
+    gl.uniform3fv(shaderProgram.eyePosition, eye);
+    shaderProgram.lighting = gl.getUniformLocation(shaderProgram, 'lighting');
+    shaderProgram.ambient = gl.getUniformLocation(shaderProgram, 'ambient');
+    shaderProgram.diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
+    shaderProgram.specular = gl.getUniformLocation(shaderProgram, 'specular');
+    shaderProgram.shininess = gl.getUniformLocation(shaderProgram, 'shininess');
 }
 
 function drawScene() {
