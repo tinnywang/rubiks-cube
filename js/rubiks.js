@@ -66,6 +66,7 @@ function RubiksCube() {
     this.selectedCube = null;
     this.rotatedCubes = null;
     this.rotationAxis = null;
+    this.axisConstant = null;
     this.rotationAngle = 0;
     this.degrees = DEGREES;
     this.normalsCube = new NormalsCube();
@@ -133,15 +134,17 @@ function RubiksCube() {
      * Sets this.rotatedCubes to an array of cubes that share the same AXIS coordinate as this.selectedCube.
      * AXIS is 0, 1, or 2 for the x-, y-, or z-coordinate.
      */
-    this.setRotatedCubes = function(axis) {
-        this.rotationAxis = axis;
-        var value = this.selectedCube.coordinates[axis];
+    this.setRotatedCubes = function() {
+        if (!this.rotationAxis || !this.axisConstant) {
+            return;
+        }
+        var value = this.selectedCube.coordinates[this.axisConstant];
         var cubes = [];
         for (var r = 0; r < 3; r++) {
             for (var g = 0; g < 3; g++) {
                 for (var b = 0; b < 3; b++) {
                     var cube = this.cubes[r][g][b];
-                    if (Math.abs(cube.coordinates[axis] - value) < MARGIN_OF_ERROR) {
+                    if (Math.abs(cube.coordinates[this.axisConstant] - value) < MARGIN_OF_ERROR) {
                         cubes.push(cube);
                     }
                 }
@@ -165,12 +168,7 @@ function RubiksCube() {
         this.rotationAngle += this.degrees;
 
         var newRotationMatrix = mat4.create();
-        if (this.rotationAxis == X_AXIS) {
-            mat4.rotateX(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees));
-        } else if (this.rotationAxis == Y_AXIS) {
-            mat4.rotateY(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees));
-        } else {
-        }
+        mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees), this.rotationAxis);
 
         for (var c in this.rotatedCubes) {
             var cube = this.rotatedCubes[c];
@@ -196,6 +194,30 @@ function RubiksCube() {
         gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         this.selectedCube = this.colorToCube(pixelValues);
+    }
+
+    this.setRotationAxis = function(x, y, direction) {
+        var normal = this.normalsCube.getNormal(event.pageX, canvas.height - event.pageY);
+        if (!normal) {
+            return;
+        }
+        var axis = vec3.create();
+        vec3.cross(axis, normal, direction);
+        var x = Math.round(axis[0]);
+        var y = Math.round(axis[1]);
+        var z = Math.round(axis[2]);
+        this.rotationAxis = Math.abs(x + y + z) == 1 ? [x, y, z] : null;
+        if (!this.rotationAxis) {
+            this.axisConstant = null;
+            return;
+        }
+        if (x == 1 || x == -1) {
+            this.axisConstant = X_AXIS;
+        } else if (y == 1 || y == -1) {
+            this.axisConstant = Y_AXIS;
+        } else if (z == 1 || z == -1 ) {
+            this.axisConstant = Z_AXIS;
+        }
     }
 }
 
@@ -318,6 +340,14 @@ function NormalsCube() {
         'black': [0.0, 0.0, 0.0, 1.0],
         'yellow': [1.0, 1.0, 0.0, 1.0]
     }
+    this.NORMALS = {
+        'blue': [-1, 0, 0],
+        'green': [0, 0, -1],
+        'orange': [1, 0, 0],
+        'red': [0, 0, 1],
+        'black': [0, -1, 0],
+        'yellow': [0, 1, 0]
+    }
 
     this.draw = function() {
         var mvMatrix = mat4.create();
@@ -345,6 +375,27 @@ function NormalsCube() {
 
         mat4.copy(modelViewMatrix, mvMatrix);
         gl.uniform1i(lighting, 1);
+    }
+
+    this.colorToNormal = function(rgba) {
+        var r = (rgba[0] / 255).toFixed(1);
+        var g = (rgba[1] / 255).toFixed(1);
+        var b = (rgba[2] / 255).toFixed(1);
+        for (var c in this.COLORS) {
+            var color = this.COLORS[c];
+            if (r == color[0] && g == color[1] && b == color[2]) {
+                return this.NORMALS[c];
+            }
+        }
+        return null;
+    }
+
+    this.getNormal = function(x, y) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, normalsFramebuffer);
+        var pixelValues = new Uint8Array(4);
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return this.colorToNormal(pixelValues);
     }
 }
 
@@ -622,10 +673,9 @@ function rotate(event) {
         var direction = vec3.create();
         vec3.subtract(direction, new_coordinates, init_coordinates);
         vec3.normalize(direction, direction);
-        /*
-        rubiksCube.setRotatedCubes(axis);
-        isRotating = true;
-        */
+        rubiksCube.setRotationAxis(event.pageX, canvas.height - event.pageY, direction);
+        rubiksCube.setRotatedCubes();
+        isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
     }
 }
 
