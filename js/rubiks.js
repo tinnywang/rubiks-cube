@@ -1,4 +1,5 @@
-var canvas; var gl;
+var canvas;
+var gl;
 var rubiksCube;
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
@@ -393,7 +394,7 @@ function initCubeBuffers() {
     // normals
     cubeNormalsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeNormalsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertex_normals), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.normals), gl.STATIC_DRAW);
     // faces
     cubeFacesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
@@ -408,7 +409,7 @@ function initStickerBuffers() {
     // normals
     stickerNormalsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, stickerNormalsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.vertex_normals), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.normals), gl.STATIC_DRAW);
     // faces
     stickerFacesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stickerFacesBuffer);
