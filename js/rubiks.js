@@ -128,6 +128,9 @@ function RubiksCube() {
     this.init();
 
     this.draw = function() {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
         mat4.lookAt(modelViewMatrix, eye, center, up);
@@ -147,7 +150,11 @@ function RubiksCube() {
     }
 
     this.drawToPickingFramebuffer = function() {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.pickingFramebuffer);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform1i(lighting, 0);
+
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
         mat4.lookAt(modelViewMatrix, eye, center, up);
@@ -161,10 +168,16 @@ function RubiksCube() {
                 }
             }
         }
+
         gl.uniform1i(lighting, 1);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
     this.drawToNormalsFramebuffer = function() {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.normalsCube.normalsFramebuffer);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
         mat4.lookAt(modelViewMatrix, eye, center, up);
@@ -172,6 +185,8 @@ function RubiksCube() {
         var mvMatrix = mat4.create();
         mat4.copy(mvMatrix, modelViewMatrix);
         this.normalsCube.draw();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
     /*
@@ -589,20 +604,8 @@ function drawScene() {
         rubiksCube.rotateLayer();
     }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.normalsCube.normalsFramebuffer);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     rubiksCube.drawToNormalsFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.pickingFramebuffer);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    rubiksCube.drawToPickingFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    rubiksCube.drawToPickingFramebuffer(); 
     rubiksCube.draw();
 }
 
