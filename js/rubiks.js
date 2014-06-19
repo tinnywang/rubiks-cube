@@ -609,6 +609,7 @@ function start() {
     gl = initWebGL(canvas);
     initShaders();
     rubiksCube = new RubiksCube();
+    perspectiveView();
 
     if (gl) {
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
@@ -716,10 +717,72 @@ function endRotate(event) {
     }
 }
 
+function topView() {
+    mat4.identity(rotationMatrix);
+    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(90));
+}
+
+function bottomView() {
+    mat4.identity(rotationMatrix);
+    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(-90));
+}
+
+function leftView() {
+    mat4.identity(rotationMatrix);
+    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(-90));
+}
+
+function rightView() {
+    mat4.identity(rotationMatrix);
+    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(90));
+}
+
+function frontView() {
+    mat4.identity(rotationMatrix);
+}
+
+function backView() {
+    mat4.identity(rotationMatrix);
+    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(180));
+}
+
+function perspectiveView() {
+    mat4.identity(rotationMatrix);
+    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(45));
+    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(-45));
+}
+
+function togglePerspective(event) {
+    switch(event.which) {
+        case 32: // space
+            perspectiveView();
+            break;
+        case 97: // a, left
+            leftView();
+            break;
+        case 100: // d, right
+            rightView();
+            break;
+        case 101: // e, top
+            topView();
+            break;
+        case 113: // q, bottom
+            bottomView();
+            break;
+        case 115: // s, back
+            backView();
+            break;
+        case 119: // w, front
+            frontView();
+            break;
+    }
+}
+
 $(document).ready(function() {
     start();
     $('#glcanvas').bind('contextmenu', function(e) { return false; });
     $('#glcanvas').mousedown(startRotate);
     $('#glcanvas').mousemove(rotate);
     $('#glcanvas').mouseup(endRotate);
+    $('body').keypress(togglePerspective);
 });
