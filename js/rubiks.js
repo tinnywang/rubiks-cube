@@ -1,9 +1,6 @@
 var canvas;
 var gl;
 var rubiksCube;
-var eye = [0, 0, -10];
-var center = [0, 0, 0];
-var up = [0, 1, 0];
 
 var rightMouseDown = false;
 var x_init_right;
@@ -25,35 +22,14 @@ var diffuse;
 var specular;
 var shininess;
 
+var eye = [0, 0, -10];
+var center = [0, 0, 0];
+var up = [0, 1, 0];
+
 var modelViewMatrix = mat4.create();
 var projectionMatrix = mat4.create();
 var rotationMatrix = mat4.create();
 
-var cubeVerticesBuffer;
-var cubeNormalsBuffer;
-var cubeFacesBuffer;
-var stickerVerticesBuffer;
-var stickerNormalsBuffer;
-var stickerFacesBuffer;
-var normalsCubeVerticesBuffer;
-var normalsCubeNormalsBuffer;
-var normalsCubeFacesBuffer;
-
-var pickingFramebuffer;
-var pickingTexture;
-var pickingRenderBuffer;
-var normalsFramebuffer;
-var normalsTexture;
-var normalsRenderBuffer;
-
-var COLORS = {
-    'blue': [0.0, 0.0, 1.0, 1.0],
-    'green': [0.0, 1.0, 0.0, 1.0],
-    'orange': [1.0, 0.5, 0.0, 1.0],
-    'red': [1.0, 0.0, 0.0, 1.0],
-    'white': [1.0, 1.0, 1.0, 1.0],
-    'yellow': [1.0, 1.0, 0.0, 1.0]
-}
 var DEGREES = 5;
 var MARGIN_OF_ERROR = 1e-3;
 var X_AXIS = 0;
@@ -63,25 +39,93 @@ var LEFT_MOUSE = 0;
 var RIGHT_MOUSE = 2;
 
 function RubiksCube() {
-    this.selectedCube = null;
-    this.rotatedCubes = null;
-    this.rotationAxis = null;
-    this.axisConstant = null;
+    this.selectedCube = null; // an instance of Cube
+    this.rotatedCubes = null; // an array of Cubes
+    this.rotationAxis = null; // a vec3
+    this.axisConstant = null; // X_AXIS, Y_AXIS, or Z_AXIS
     this.rotationAngle = 0;
     this.degrees = DEGREES;
+    this.cubeVerticesBuffer = null;
+    this.cubeNormalsBuffer = null;
+    this.cubeFacesBuffer = null;
+    this.stickerVerticesBuffer = null;
+    this.stickerNormalsBuffer = null;
+    this.stickerFacesBuffer = null;
+    this.pickingFramebuffer = null;
+    this.pickingTexture = null;
+    this.pickingRenderBuffer = null;
     this.normalsCube = new NormalsCube();
     this.cubes = new Array(3);
-    for (var r = 0; r < 3; r++) {
-        this.cubes[r] = new Array(3);
-        for (var g = 0; g < 3; g++) {
-            this.cubes[r][g] = new Array(3);
-            for (var b = 0; b < 3; b++) {
-                var coordinates = [r - 1, g - 1, b - 1];
-                var color = [r / 3, g / 3, b / 3, 1.0];
-                this.cubes[r][g][b] = new Cube(coordinates, color);
+
+    this.init = function() {
+        this.initTextureFramebuffer();
+        this.initCubeBuffers();
+        this.initStickerBuffers();
+        for (var r = 0; r < 3; r++) {
+            this.cubes[r] = new Array(3);
+            for (var g = 0; g < 3; g++) {
+                this.cubes[r][g] = new Array(3);
+                for (var b = 0; b < 3; b++) {
+                    var coordinates = [r - 1, g - 1, b - 1];
+                    var color = [r / 3, g / 3, b / 3, 1.0];
+                    this.cubes[r][g][b] = new Cube(this, coordinates, color);
+                }
             }
         }
     }
+
+    this.initTextureFramebuffer = function() {
+        this.pickingFramebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
+
+        this.pickingTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.pickingTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+        this.pickingRenderBuffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickingRenderBuffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
+
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.pickingTexture, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickingRenderBuffer);
+    }
+
+    this.initCubeBuffers = function() {
+        // vertices
+        this.cubeVerticesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeVerticesBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertices), gl.STATIC_DRAW);
+        // normals
+        this.cubeNormalsBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalsBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.normals), gl.STATIC_DRAW);
+        // faces
+        this.cubeFacesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeModel.faces), gl.STATIC_DRAW);
+    }
+
+    this.initStickerBuffers = function() {
+        // vertices
+        this.stickerVerticesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.stickerVerticesBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.vertices), gl.STATIC_DRAW);
+        // normals
+        this.stickerNormalsBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.stickerNormalsBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.normals), gl.STATIC_DRAW);
+        // faces
+        this.stickerFacesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.stickerFacesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(stickerModel.faces), gl.STATIC_DRAW);
+    }
+
+    this.init();
 
     this.draw = function() {
         mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
@@ -189,7 +233,7 @@ function RubiksCube() {
     }
 
     this.selectCube = function(x, y) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
         var pixelValues = new Uint8Array(4);
         gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -221,61 +265,77 @@ function RubiksCube() {
     }
 }
 
-function Cube(coordinates, color) {
+function Cube(rubiksCube, coordinates, color) {
+    this.rubiksCube = rubiksCube;
     this.coordinates = coordinates;
     this.color = color;
     this.rotationMatrix = mat4.create();
-
     this.translationVector = vec3.create();
-    vec3.scale(this.translationVector, this.coordinates, 2);
+    this.stickers = [];
+    this.COLORS = {
+        'blue': [0.0, 0.0, 1.0, 1.0],
+        'green': [0.0, 1.0, 0.0, 1.0],
+        'orange': [1.0, 0.5, 0.0, 1.0],
+        'red': [1.0, 0.0, 0.0, 1.0],
+        'white': [1.0, 1.0, 1.0, 1.0],
+        'yellow': [1.0, 1.0, 0.0, 1.0]
+    }
+    
+    this.init = function() {
+        vec3.scale(this.translationVector, this.coordinates, 2);
+        this.initStickers();
+    }
+
+    this.initStickers = function() {
+        var x = this.coordinates[0];
+        var y = this.coordinates[1];
+        var z = this.coordinates[2];
+        if (x == -1) {
+            this.stickers.push(new Sticker(this, this.COLORS['red'], function() {
+                this.cube.transform();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [-1.001, 0, 0]);
+                mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
+            }));
+        } else if (x == 1) {
+            this.stickers.push(new Sticker(this, this.COLORS['orange'], function() {
+                this.cube.transform();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [1.001, 0, 0]);
+                mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
+            }));
+        }
+        if (y == -1) {
+            this.stickers.push(new Sticker(this, this.COLORS['yellow'], function() {
+                this.cube.transform();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, -1.001, 0]);
+                mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
+            }));
+        } else if (y == 1) {
+            this.stickers.push(new Sticker(this, this.COLORS['white'], function() {
+                this.cube.transform();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 1.001, 0]);
+                setMatrixUniforms();
+            }));
+        }
+        if (z == 1) {
+            this.stickers.push(new Sticker(this, this.COLORS['green'], function() {
+                this.cube.transform();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, 1.001]);
+                mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
+            }));
+        } else if (z == -1) {
+            this.stickers.push(new Sticker(this, this.COLORS['blue'], function() {
+                this.cube.transform();
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -1.001]);
+                mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
+            }));
+        }
+    }
+
+    this.init();
 
     this.transform = function() {
         mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
         mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
-    }
-
-    this.stickers = [];
-    var x = this.coordinates[0];
-    var y = this.coordinates[1];
-    var z = this.coordinates[2];
-    if (x == -1) {
-        this.stickers.push(new Sticker(this, COLORS['red'], function() {
-            this.cube.transform();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [-1.001, 0, 0]);
-            mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
-        }));
-    } else if (x == 1) {
-        this.stickers.push(new Sticker(this, COLORS['orange'], function() {
-            this.cube.transform();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [1.001, 0, 0]);
-            mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
-        }));
-    }
-    if (y == -1) {
-        this.stickers.push(new Sticker(this, COLORS['yellow'], function() {
-            this.cube.transform();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [0, -1.001, 0]);
-            mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
-        }));
-    } else if (y == 1) {
-        this.stickers.push(new Sticker(this, COLORS['white'], function() {
-            this.cube.transform();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [0, 1.001, 0]);
-            setMatrixUniforms();
-        }));
-    }
-    if (z == 1) {
-        this.stickers.push(new Sticker(this, COLORS['green'], function() {
-            this.cube.transform();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, 1.001]);
-            mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
-        }));
-    } else if (z == -1) {
-        this.stickers.push(new Sticker(this, COLORS['blue'], function() {
-            this.cube.transform();
-            mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -1.001]);
-            mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
-        }));
     }
 
     this.draw = function(color) {
@@ -289,13 +349,13 @@ function Cube(coordinates, color) {
         gl.uniform4fv(specular, cubeModel.specular);
         gl.uniform1f(shininess, cubeModel.shininess);
         // vertices
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
         gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
         // normals
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubeNormalsBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeNormalsBuffer);
         gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
         gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
 
         mat4.copy(modelViewMatrix, mvMatrix);
@@ -318,13 +378,13 @@ function Sticker(cube, color, transform) {
         gl.uniform4fv(specular, stickerModel.specular);
         gl.uniform1f(shininess, stickerModel.shininess);
         // vertices
-        gl.bindBuffer(gl.ARRAY_BUFFER, stickerVerticesBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerVerticesBuffer);
         gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
         // normals
-        gl.bindBuffer(gl.ARRAY_BUFFER, stickerNormalsBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerNormalsBuffer);
         gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stickerFacesBuffer);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cube.rubiksCube.stickerFacesBuffer);
         gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
 
         mat4.copy(modelViewMatrix, mvMatrix);
@@ -332,6 +392,12 @@ function Sticker(cube, color, transform) {
 }
 
 function NormalsCube() {
+    this.normalsFramebuffer = null;
+    this.normalsTexture = null;
+    this.normalsRenderbuffer = null;
+    this.verticesBuffer = null;
+    this.normalsBuffer = null;
+    this.facesBuffer = null;
     this.COLORS = {
         'blue': [0.0, 0.0, 1.0, 1.0],
         'green': [0.0, 1.0, 0.0, 1.0],
@@ -349,6 +415,53 @@ function NormalsCube() {
         'yellow': [0, 1, 0]
     }
 
+    this.init = function() {
+        this.initTextureFramebuffer();
+        this.initBuffers();
+    }
+
+    this.initTextureFramebuffer = function() {
+        this.normalsFramebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.normalsFramebuffer);
+
+        this.normalsTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.normalsTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+     
+        this.normalsRenderBuffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.normalsRenderBuffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
+
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.normalsTexture, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.normalsRenderBuffer);
+
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    this.initBuffers = function() {
+        // vertices
+        this.verticesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalsCubeModel.vertices), gl.STATIC_DRAW);
+        // normals
+        this.normalsBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalsBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalsCubeModel.normals), gl.STATIC_DRAW);
+        // faces
+        this.facesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.facesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(normalsCubeModel.faces), gl.STATIC_DRAW);
+    }
+
+    this.init();
+
     this.draw = function() {
         var mvMatrix = mat4.create();
         mat4.copy(mvMatrix, modelViewMatrix);
@@ -357,13 +470,13 @@ function NormalsCube() {
 
         gl.uniform1i(lighting, 0);
         // vertices
-        gl.bindBuffer(gl.ARRAY_BUFFER, normalsCubeVerticesBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
         gl.vertexAttribPointer(vertexPosition, 3, gl.FLOAT, false, 0, 0);
         // normals
-        gl.bindBuffer(gl.ARRAY_BUFFER, normalsCubeNormalsBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalsBuffer);
         gl.vertexAttribPointer(vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, normalsCubeFacesBuffer);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.facesBuffer);
         var offset = 0;
         for (var c in this.COLORS) {
             var color = this.COLORS[c];
@@ -391,7 +504,7 @@ function NormalsCube() {
     }
 
     this.getNormal = function(x, y) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, normalsFramebuffer);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.normalsFramebuffer);
         var pixelValues = new Uint8Array(4);
         gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -444,50 +557,6 @@ function getShader(gl, id) {
     return shader;
 }
 
-function initTextureFramebuffer() {
-    pickingFramebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
-
-    pickingTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, pickingTexture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-
-    pickingRenderBuffer = gl.createRenderbuffer();
-    gl.bindRenderbuffer(gl.RENDERBUFFER, pickingRenderBuffer);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
-
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pickingTexture, 0);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, pickingRenderBuffer);
-
-    normalsFramebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, normalsFramebuffer);
-
-    normalsTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, normalsTexture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
- 
-    normalsRenderBuffer = gl.createRenderbuffer();
-    gl.bindRenderbuffer(gl.RENDERBUFFER, normalsRenderBuffer);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
-
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, normalsTexture, 0);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, normalsRenderBuffer);
-
-    gl.bindTexture(gl.TEXTURE_2D, null);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-}
-
 function initShaders() {
     var fragmentShader = getShader(gl, 'fragmentShader');
     var vertexShader = getShader(gl, 'vertexShader');
@@ -512,51 +581,6 @@ function initShaders() {
     shininess = gl.getUniformLocation(shaderProgram, 'shininess');
 }
 
-function initCubeBuffers() {
-    // vertices
-    cubeVerticesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertices), gl.STATIC_DRAW);
-    // normals
-    cubeNormalsBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeNormalsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.normals), gl.STATIC_DRAW);
-    // faces
-    cubeFacesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeFacesBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeModel.faces), gl.STATIC_DRAW);
-}
-
-function initStickerBuffers() {
-    // vertices
-    stickerVerticesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, stickerVerticesBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.vertices), gl.STATIC_DRAW);
-    // normals
-    stickerNormalsBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, stickerNormalsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.normals), gl.STATIC_DRAW);
-    // faces
-    stickerFacesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stickerFacesBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(stickerModel.faces), gl.STATIC_DRAW);
-}
-
-function initNormalsCubeBuffers() {
-    // vertices
-    normalsCubeVerticesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalsCubeVerticesBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalsCubeModel.vertices), gl.STATIC_DRAW);
-    // normals
-    normalsCubeNormalsBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalsCubeNormalsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalsCubeModel.normals), gl.STATIC_DRAW);
-    // faces
-    normalsCubeFacesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, normalsCubeFacesBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(normalsCubeModel.faces), gl.STATIC_DRAW);
-}
-
 function drawScene() {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
@@ -565,13 +589,13 @@ function drawScene() {
         rubiksCube.rotateLayer();
     }
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, normalsFramebuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.normalsCube.normalsFramebuffer);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     rubiksCube.drawToNormalsFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.pickingFramebuffer);
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     rubiksCube.drawToPickingFramebuffer();
@@ -590,11 +614,7 @@ function tick() {
 function start() {
     canvas = document.getElementById('glcanvas');
     gl = initWebGL(canvas);
-    initTextureFramebuffer();
     initShaders();
-    initCubeBuffers();
-    initStickerBuffers();
-    initNormalsCubeBuffers();
     rubiksCube = new RubiksCube();
 
     if (gl) {
