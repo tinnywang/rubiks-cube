@@ -684,7 +684,9 @@ function startRotate(event) {
         rubiksCube.selectCube(event.pageX, canvas.height - event.pageY);
         if (rubiksCube.selectedCube) {
             init_coordinates = screenToObjectCoordinates(event.pageX, canvas.height - event.pageY);
-            leftMouseDown = true;
+            setTimeout(function() {
+                leftMouseDown = true;
+            }, 50);
         }
     } else if (event.button == RIGHT_MOUSE) { // right mouse
         rightMouseDown = true;
