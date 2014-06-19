@@ -135,7 +135,7 @@ function RubiksCube() {
      * AXIS is 0, 1, or 2 for the x-, y-, or z-coordinate.
      */
     this.setRotatedCubes = function() {
-        if (!this.rotationAxis || !this.axisConstant) {
+        if (!this.rotationAxis) {
             return;
         }
         var value = this.selectedCube.coordinates[this.axisConstant];
