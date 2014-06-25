@@ -12,6 +12,7 @@ var leftMouseDown = false;
 var init_coordinates;
 var new_coordinates;
 var isRotating = false;
+var isScrambling = false;
 var eye = [0, 0, -10];
 var center = [0, 0, 0];
 var up = [0, 1, 0];
@@ -35,6 +36,7 @@ function RubiksCube() {
     this.axisConstant = null; // X_AXIS, Y_AXIS, or Z_AXIS
     this.rotationAngle = 0;
     this.degrees = DEGREES;
+    this.scrambleCycles = 0;
     this.cubeVerticesBuffer = null;
     this.cubeNormalsBuffer = null;
     this.cubeFacesBuffer = null;
@@ -211,6 +213,7 @@ function RubiksCube() {
         if (Math.abs(this.rotationAngle) == 90) {
             this.rotationAngle = 0;
             isRotating = false;
+            this.scramble();
             return;
         }
 
@@ -266,6 +269,36 @@ function RubiksCube() {
             this.axisConstant = Y_AXIS;
         } else if (z == 1 || z == -1 ) {
             this.axisConstant = Z_AXIS;
+        }
+    }
+
+    this.scramble = function() {
+        if (this.scrambleCycles == 0) {
+            isRotating = false;
+            isScrambling = false;
+            return;
+        } else {
+            var r = Math.floor(Math.random() * 3)
+            var g = Math.floor(Math.random() * 3)
+            var b = Math.floor(Math.random() * 3)
+            this.selectedCube = this.cubes[r][g][b];
+
+            var axes = [X_AXIS, Y_AXIS, Z_AXIS];
+            this.axisConstant = axes[Math.floor(Math.random() * 3)];
+            if (this.axisConstant == X_AXIS) {
+                this.rotationAxis = [1, 0, 0];
+            } else if (this.axisConstant == Y_AXIS) {
+                this.rotationAxis = [0, 1, 0];
+            } else {
+                this.rotationAxis = [0, 0, 1];
+            }
+            if (Math.random() < 0.5) {
+                vec3.scale(this.rotationAxis, this.rotationAxis, -1);
+            }
+
+            this.setRotatedCubes();
+            isRotating = true;
+            this.scrambleCycles--;
         }
     }
 }
@@ -775,6 +808,14 @@ function togglePerspective(event) {
         case 119: // w, front
             frontView();
             break;
+    }
+}
+
+function scramble() {
+    if (!isScrambling) {
+        isScrambling = true;
+        rubiksCube.scrambleCycles = Math.ceil(Math.random() * 10 + 10); // an integer between 10 and 20
+        rubiksCube.scramble();
     }
 }
 
