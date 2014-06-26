@@ -251,7 +251,7 @@ function RubiksCube() {
     }
 
     this.setRotationAxis = function(x, y, direction) {
-        var normal = this.normalsCube.getNormal(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
+        var normal = this.normalsCube.getNormal(x, y);
         if (!normal) {
             return;
         }
