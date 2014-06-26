@@ -28,6 +28,8 @@ var Y_AXIS = 1;
 var Z_AXIS = 2;
 var LEFT_MOUSE = 0;
 var RIGHT_MOUSE = 2;
+var CANVAS_X_OFFSET = 0;
+var CANVAS_Y_OFFSET = 0;
 
 function RubiksCube() {
     this.selectedCube = null; // an instance of Cube
@@ -249,7 +251,7 @@ function RubiksCube() {
     }
 
     this.setRotationAxis = function(x, y, direction) {
-        var normal = this.normalsCube.getNormal(event.pageX, canvas.height - event.pageY);
+        var normal = this.normalsCube.getNormal(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
         if (!normal) {
             return;
         }
@@ -620,9 +622,6 @@ function initShaders() {
 }
 
 function drawScene() {
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
-
     if (isRotating) {
         rubiksCube.rotateLayer();
     }
@@ -639,6 +638,8 @@ function tick() {
 
 function start() {
     canvas = document.getElementById('glcanvas');
+    CANVAS_X_OFFSET = $('#glcanvas').offset()['left'];
+    CANVAS_Y_OFFSET = $('#glcanvas').offset()['top'];
     gl = initWebGL(canvas);
     initShaders();
     rubiksCube = new RubiksCube();
@@ -716,11 +717,11 @@ function rotate(event) {
         mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
         mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     } else if (leftMouseDown && !isRotating) {
-        new_coordinates = screenToObjectCoordinates(event.pageX, canvas.height - event.pageY);
+        new_coordinates = screenToObjectCoordinates(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
         var direction = vec3.create();
         vec3.subtract(direction, new_coordinates, init_coordinates);
         vec3.normalize(direction, direction);
-        rubiksCube.setRotationAxis(event.pageX, canvas.height - event.pageY, direction);
+        rubiksCube.setRotationAxis(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET, direction);
         rubiksCube.setRotatedCubes();
         isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
     }
@@ -728,9 +729,9 @@ function rotate(event) {
 
 function startRotate(event) {
     if (event.button == LEFT_MOUSE) { // left mouse
-        rubiksCube.selectCube(event.pageX, canvas.height - event.pageY);
+        rubiksCube.selectCube(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
         if (rubiksCube.selectedCube) {
-            init_coordinates = screenToObjectCoordinates(event.pageX, canvas.height - event.pageY);
+            init_coordinates = screenToObjectCoordinates(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
             setTimeout(function() {
                 leftMouseDown = true;
             }, 50);
@@ -826,4 +827,10 @@ $(document).ready(function() {
     $('#glcanvas').mousemove(rotate);
     $('#glcanvas').mouseup(endRotate);
     $('body').keypress(togglePerspective);
+    $(window).resize(function() {
+        CANVAS_X_OFFSET = $('#glcanvas').offset()['left'];
+        CANVAS_Y_OFFSET = $('#glcanvas').offset()['top'];
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    });
 });
