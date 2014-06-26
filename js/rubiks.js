@@ -768,7 +768,7 @@ function leftView() {
 
 function rightView() {
     mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(90));
+    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(90));
 }
 
 function frontView() {
