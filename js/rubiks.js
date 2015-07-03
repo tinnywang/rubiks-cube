@@ -13,7 +13,7 @@ var init_coordinates;
 var new_coordinates;
 var isRotating = false;
 var isScrambling = false;
-var eye = [0, 0, -10];
+var eye = [0, 0, -20];
 var center = [0, 0, 0];
 var up = [0, 1, 0];
 
@@ -23,6 +23,7 @@ var rotationMatrix = mat4.create();
 
 var DEGREES = 5;
 var MARGIN_OF_ERROR = 1e-3;
+var FOV = -45;
 var X_AXIS = 0;
 var Y_AXIS = 1;
 var Z_AXIS = 2;
@@ -125,7 +126,7 @@ function RubiksCube() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             
-        mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
+        mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
         mat4.lookAt(modelViewMatrix, eye, center, up);
         mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
@@ -149,7 +150,7 @@ function RubiksCube() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform1i(shaderProgram.lighting, 0);
 
-        mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
+        mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
         mat4.lookAt(modelViewMatrix, eye, center, up);
         mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
@@ -172,7 +173,7 @@ function RubiksCube() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        mat4.perspective(projectionMatrix, 30, canvas.width / canvas.height, 0.1, 100.0);
+        mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
         mat4.identity(modelViewMatrix);
         mat4.lookAt(modelViewMatrix, eye, center, up);
         mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
