@@ -24,6 +24,7 @@ var rotationMatrix = mat4.create();
 var DEGREES = 5;
 var MARGIN_OF_ERROR = 1e-3;
 var FOV = -45;
+var STICKER_DEPTH = 0.96;
 var X_AXIS = 0;
 var Y_AXIS = 1;
 var Z_AXIS = 2;
@@ -334,39 +335,39 @@ function Cube(rubiksCube, coordinates, color) {
         if (x == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['red'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [-0.96, 0, 0]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [-STICKER_DEPTH, 0, 0]);
                 mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
             }));
         } else if (x == 1) {
             this.stickers.push(new Sticker(this, this.COLORS['orange'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0.96, 0, 0]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [STICKER_DEPTH, 0, 0]);
                 mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
             }));
         }
         if (y == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['yellow'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, -0.96, 0]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, -STICKER_DEPTH, 0]);
                 mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
             }));
         } else if (y == 1) {
             this.stickers.push(new Sticker(this, this.COLORS['white'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0.96, 0]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, STICKER_DEPTH, 0]);
                 setMatrixUniforms();
             }));
         }
         if (z == 1) {
             this.stickers.push(new Sticker(this, this.COLORS['green'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, 0.96]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, STICKER_DEPTH]);
                 mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
             }));
         } else if (z == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['blue'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -0.96]);
+                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -STICKER_DEPTH]);
                 mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
             }));
         }
