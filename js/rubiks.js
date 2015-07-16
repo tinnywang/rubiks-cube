@@ -730,7 +730,7 @@ function rotate(event) {
 }
 
 function startRotate(event) {
-    if (event.button == LEFT_MOUSE) { // left mouse
+    if (isLeftMouse(event)) {
         rubiksCube.selectCube(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
         if (rubiksCube.selectedCube) {
             init_coordinates = screenToObjectCoordinates(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
@@ -738,7 +738,7 @@ function startRotate(event) {
                 leftMouseDown = true;
             }, 50);
         }
-    } else if (event.button == RIGHT_MOUSE) { // right mouse
+    } else if (isRightMouse(event)) {
         rightMouseDown = true;
         x_init_right = event.pageX;
         y_init_right = event.pageY;
@@ -746,11 +746,19 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    if (event.button == LEFT_MOUSE && leftMouseDown) { // left mouse
+    if (isLeftMouse(event)) {
         leftMouseDown = false;
-    } else if (event.button == RIGHT_MOUSE) { // right mouse
+    } else if (isRightMouse(event)) {
         rightMouseDown = false;
     }
+}
+
+function isLeftMouse(event) {
+    return event.button == LEFT_MOUSE && !event.ctrlKey
+}
+
+function isRightMouse(event) {
+    return (event.button == LEFT_MOUSE && event.ctrlKey) || event.button == RIGHT_MOUSE
 }
 
 function topView() {
