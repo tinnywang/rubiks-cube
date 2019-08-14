@@ -17,9 +17,9 @@ var eye = [0, 0, -20];
 var center = [0, 0, 0];
 var up = [0, 1, 0];
 
-var modelViewMatrix = mat4.create();
-var projectionMatrix = mat4.create();
-var rotationMatrix = mat4.create();
+var modelViewMatrix = glMatrix.mat4.create();
+var projectionMatrix = glMatrix.mat4.create();
+var rotationMatrix = glMatrix.mat4.create();
 
 var DEGREES = 5;
 var MARGIN_OF_ERROR = 1e-3;
@@ -127,11 +127,11 @@ function RubiksCube() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             
-        mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        mat4.identity(modelViewMatrix);
-        mat4.lookAt(modelViewMatrix, eye, center, up);
-        mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
-        var mvMatrix = mat4.create();
+        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
+        glMatrix.mat4.identity(modelViewMatrix);
+        glMatrix.mat4.lookAt(modelViewMatrix, eye, center, up);
+        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
+        var mvMatrix = glMatrix.mat4.create();
         for (var r = 0; r < 3; r++) {
             for (var g = 0; g < 3; g++) {
                 for (var b = 0; b < 3; b++) {
@@ -151,11 +151,11 @@ function RubiksCube() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform1i(shaderProgram.lighting, 0);
 
-        mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        mat4.identity(modelViewMatrix);
-        mat4.lookAt(modelViewMatrix, eye, center, up);
-        mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
-        var mvMatrix = mat4.create();
+        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
+        glMatrix.mat4.identity(modelViewMatrix);
+        glMatrix.mat4.lookAt(modelViewMatrix, eye, center, up);
+        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
+        var mvMatrix = glMatrix.mat4.create();
         for (var r = 0; r < 3; r++) {
             for (var g = 0; g < 3; g++) {
                 for (var b = 0; b < 3; b++) {
@@ -174,12 +174,12 @@ function RubiksCube() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        mat4.identity(modelViewMatrix);
-        mat4.lookAt(modelViewMatrix, eye, center, up);
-        mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
-        var mvMatrix = mat4.create();
-        mat4.copy(mvMatrix, modelViewMatrix);
+        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
+        glMatrix.mat4.identity(modelViewMatrix);
+        glMatrix.mat4.lookAt(modelViewMatrix, eye, center, up);
+        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
+        var mvMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
         this.normalsCube.draw();
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -223,13 +223,13 @@ function RubiksCube() {
 
         this.rotationAngle += this.degrees;
 
-        var newRotationMatrix = mat4.create();
-        mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees), this.rotationAxis);
+        var newRotationMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(this.degrees), this.rotationAxis);
 
         for (var c in this.rotatedCubes) {
             var cube = this.rotatedCubes[c];
-            vec3.transformMat4(cube.coordinates, cube.coordinates, newRotationMatrix);
-            mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
+            glMatrix.vec3.transformMat4(cube.coordinates, cube.coordinates, newRotationMatrix);
+            glMatrix.mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
         }
     }
 
@@ -257,8 +257,8 @@ function RubiksCube() {
         if (!normal) {
             return;
         }
-        var axis = vec3.create();
-        vec3.cross(axis, normal, direction);
+        var axis = glMatrix.vec3.create();
+        glMatrix.vec3.cross(axis, normal, direction);
         var x = Math.round(axis[0]);
         var y = Math.round(axis[1]);
         var z = Math.round(axis[2]);
@@ -297,7 +297,7 @@ function RubiksCube() {
                 this.rotationAxis = [0, 0, 1];
             }
             if (Math.random() < 0.5) {
-                vec3.scale(this.rotationAxis, this.rotationAxis, -1);
+                glMatrix.vec3.scale(this.rotationAxis, this.rotationAxis, -1);
             }
 
             this.setRotatedCubes();
@@ -311,8 +311,8 @@ function Cube(rubiksCube, coordinates, color) {
     this.rubiksCube = rubiksCube;
     this.coordinates = coordinates;
     this.color = color;
-    this.rotationMatrix = mat4.create();
-    this.translationVector = vec3.create();
+    this.rotationMatrix = glMatrix.mat4.create();
+    this.translationVector = glMatrix.vec3.create();
     this.stickers = [];
     this.COLORS = {
         'blue': [0.0, 0.0, 1.0, 1.0],
@@ -324,7 +324,7 @@ function Cube(rubiksCube, coordinates, color) {
     }
     
     this.init = function() {
-        vec3.scale(this.translationVector, this.coordinates, 2);
+        glMatrix.vec3.scale(this.translationVector, this.coordinates, 2);
         this.initStickers();
     }
 
@@ -335,40 +335,40 @@ function Cube(rubiksCube, coordinates, color) {
         if (x == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['red'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [-STICKER_DEPTH, 0, 0]);
-                mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
+                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [-STICKER_DEPTH, 0, 0]);
+                glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
             }));
         } else if (x == 1) {
             this.stickers.push(new Sticker(this, this.COLORS['orange'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [STICKER_DEPTH, 0, 0]);
-                mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
+                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [STICKER_DEPTH, 0, 0]);
+                glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
             }));
         }
         if (y == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['yellow'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, -STICKER_DEPTH, 0]);
-                mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
+                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, -STICKER_DEPTH, 0]);
+                glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-180));
             }));
         } else if (y == 1) {
             this.stickers.push(new Sticker(this, this.COLORS['white'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, STICKER_DEPTH, 0]);
+                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, STICKER_DEPTH, 0]);
                 setMatrixUniforms();
             }));
         }
         if (z == 1) {
             this.stickers.push(new Sticker(this, this.COLORS['green'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, STICKER_DEPTH]);
-                mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
+                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, STICKER_DEPTH]);
+                glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(90));
             }));
         } else if (z == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['blue'], function() {
                 this.cube.transform();
-                mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -STICKER_DEPTH]);
-                mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
+                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -STICKER_DEPTH]);
+                glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, degreesToRadians(-90));
             }));
         }
     }
@@ -376,13 +376,13 @@ function Cube(rubiksCube, coordinates, color) {
     this.init();
 
     this.transform = function() {
-        mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
-        mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
+        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
+        glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
     }
 
     this.draw = function(color) {
-        var mvMatrix = mat4.create();
-        mat4.copy(mvMatrix, modelViewMatrix);
+        var mvMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
         this.transform();
         setMatrixUniforms();
 
@@ -400,7 +400,7 @@ function Cube(rubiksCube, coordinates, color) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
         gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
 
-        mat4.copy(modelViewMatrix, mvMatrix);
+        glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
     }
 }
 
@@ -410,8 +410,8 @@ function Sticker(cube, color, transform) {
     this.transform = transform;
 
     this.draw = function() {
-        var mvMatrix = mat4.create();
-        mat4.copy(mvMatrix, modelViewMatrix)
+        var mvMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.copy(mvMatrix, modelViewMatrix)
         this.transform();
         setMatrixUniforms();
 
@@ -429,7 +429,7 @@ function Sticker(cube, color, transform) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cube.rubiksCube.stickerFacesBuffer);
         gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
 
-        mat4.copy(modelViewMatrix, mvMatrix);
+        glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
     }
 }
 
@@ -505,9 +505,9 @@ function NormalsCube() {
     this.init();
 
     this.draw = function() {
-        var mvMatrix = mat4.create();
-        mat4.copy(mvMatrix, modelViewMatrix);
-        mat4.scale(modelViewMatrix, modelViewMatrix, [3, 3, 3]);
+        var mvMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
+        glMatrix.mat4.scale(modelViewMatrix, modelViewMatrix, [3, 3, 3]);
         setMatrixUniforms();
 
         gl.uniform1i(shaderProgram.lighting, 0);
@@ -528,7 +528,7 @@ function NormalsCube() {
             offset += 6;
         }
 
-        mat4.copy(modelViewMatrix, mvMatrix);
+        glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
         gl.uniform1i(shaderProgram.lighting, 1);
     }
 
@@ -663,28 +663,28 @@ function setMatrixUniforms() {
     gl.uniformMatrix4fv(projectionUniform, false, projectionMatrix);
     var modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
     gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
-    var _normalMatrix = mat4.create();
-    mat4.invert(_normalMatrix, modelViewMatrix);
-    mat4.transpose(_normalMatrix, _normalMatrix);
-    var normalMatrix = mat3.create();
-    mat3.fromMat4(normalMatrix, _normalMatrix);
+    var _normalMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.invert(_normalMatrix, modelViewMatrix);
+    glMatrix.mat4.transpose(_normalMatrix, _normalMatrix);
+    var normalMatrix = glMatrix.mat3.create();
+    glMatrix.mat3.fromMat4(normalMatrix, _normalMatrix);
     var normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix);
 }
 
 function unproject(dest, vec, view, proj, viewport) {
-    var m = mat4.create();
-    var v = vec4.create();
+    var m = glMatrix.mat4.create();
+    var v = glMatrix.vec4.create();
 
     v[0] = (vec[0] - viewport[0]) * 2.0 / viewport[2] - 1.0;
     v[1] = (vec[1] - viewport[1]) * 2.0 / viewport[3] - 1.0;
     v[2] = 2.0 * vec[2] - 1.0;
     v[3] = 1.0;
 
-    mat4.multiply(m, proj, view);
-    mat4.invert(m, m);
+    glMatrix.mat4.multiply(m, proj, view);
+    glMatrix.mat4.invert(m, m);
 
-    vec4.transformMat4(v, v, m);
+    glMatrix.vec4.transformMat4(v, v, m);
     if (v[3] == 0.0) {
         return null;
     }
@@ -697,7 +697,7 @@ function unproject(dest, vec, view, proj, viewport) {
 }
 
 function screenToObjectCoordinates(x, y) {
-    var objectCoordinates = vec3.create();
+    var objectCoordinates = glMatrix.vec3.create();
     var screenCoordinates = [x, y, 0];
     unproject(objectCoordinates, screenCoordinates, modelViewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
     return objectCoordinates;
@@ -715,14 +715,14 @@ function rotate(event) {
         var delta_y = (y_new_right - y_init_right) / 50;
         var axis = [delta_y, -delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
-        var newRotationMatrix = mat4.create();
-        mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
-        mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
+        var newRotationMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.rotate(newRotationMatrix, newRotationMatrix, degreesToRadians(degrees), axis);
+        glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     } else if (leftMouseDown && !isRotating) {
         new_coordinates = screenToObjectCoordinates(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
-        var direction = vec3.create();
-        vec3.subtract(direction, new_coordinates, init_coordinates);
-        vec3.normalize(direction, direction);
+        var direction = glMatrix.vec3.create();
+        glMatrix.vec3.subtract(direction, new_coordinates, init_coordinates);
+        glMatrix.vec3.normalize(direction, direction);
         rubiksCube.setRotationAxis(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET, direction);
         rubiksCube.setRotatedCubes();
         isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
@@ -762,38 +762,38 @@ function isRightMouse(event) {
 }
 
 function topView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(90));
 }
 
 function bottomView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(-90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(-90));
 }
 
 function leftView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(-90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(-90));
 }
 
 function rightView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(90));
 }
 
 function frontView() {
-    mat4.identity(rotationMatrix);
+    glMatrix.mat4.identity(rotationMatrix);
 }
 
 function backView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(180));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(180));
 }
 
 function perspectiveView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(45));
-    mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(-45));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, degreesToRadians(45));
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, degreesToRadians(-45));
 }
 
 function togglePerspective(event) {
