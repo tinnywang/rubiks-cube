@@ -1,37 +1,37 @@
 var canvas;
+var canvasXOffset;
+var canvasYOffset;
 var gl;
 var rubiksCube;
 var shaderProgram;
 
 var rightMouseDown = false;
-var x_init_right;
-var y_init_right;
-var x_new_right;
-var y_new_right;
+var xInitRight;
+var yInitRight;
+var xNewRight;
+var yNewRight;
 var leftMouseDown = false;
-var init_coordinates;
-var new_coordinates;
+var initCoordinates;
+var newCoordinates;
 var isRotating = false;
 var isScrambling = false;
-var eye = [0, 0, -20];
-var center = [0, 0, 0];
-var up = [0, 1, 0];
 
 var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
 var rotationMatrix = glMatrix.mat4.create();
 
-var DEGREES = 5;
-var MARGIN_OF_ERROR = 1e-3;
-var FOV = -45;
-var STICKER_DEPTH = 0.96;
-var X_AXIS = 0;
-var Y_AXIS = 1;
-var Z_AXIS = 2;
-var LEFT_MOUSE = 0;
-var RIGHT_MOUSE = 2;
-var CANVAS_X_OFFSET = 0;
-var CANVAS_Y_OFFSET = 0;
+const EYE = [0, 0, -20];
+const CENTER = [0, 0, 0];
+const UP = [0, 1, 0];
+const DEGREES = 5;
+const MARGIN_OF_ERROR = 1e-3;
+const FOV = -45;
+const STICKER_DEPTH = 0.96;
+const X_AXIS = 0;
+const Y_AXIS = 1;
+const Z_AXIS = 2;
+const LEFT_MOUSE = 0;
+const RIGHT_MOUSE = 2;
 
 function RubiksCube() {
     this.selectedCube = null; // an instance of Cube
@@ -128,7 +128,7 @@ function RubiksCube() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        glMatrix.mat4.lookAt(modelViewMatrix, eye, center, up);
+        glMatrix.mat4.lookAt(modelViewMatrix, EYE, CENTER, UP);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
         for (var r = 0; r < 3; r++) {
@@ -151,7 +151,7 @@ function RubiksCube() {
         gl.uniform1i(shaderProgram.lighting, 0);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        glMatrix.mat4.lookAt(modelViewMatrix, eye, center, up);
+        glMatrix.mat4.lookAt(modelViewMatrix, EYE, CENTER, UP);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
         for (var r = 0; r < 3; r++) {
@@ -173,7 +173,7 @@ function RubiksCube() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        glMatrix.mat4.lookAt(modelViewMatrix, eye, center, up);
+        glMatrix.mat4.lookAt(modelViewMatrix, EYE, CENTER, UP);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
         this.normalsCube.draw();
 
@@ -602,7 +602,7 @@ function initShaders() {
     shaderProgram.vertexNormal = gl.getAttribLocation(shaderProgram, 'vertexNormal');
     gl.enableVertexAttribArray(shaderProgram.vertexNormal);
     shaderProgram.eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
-    gl.uniform3fv(shaderProgram.eyePosition, eye);
+    gl.uniform3fv(shaderProgram.eyePosition, EYE);
     shaderProgram.lighting = gl.getUniformLocation(shaderProgram, 'lighting');
     shaderProgram.ambient = gl.getUniformLocation(shaderProgram, 'ambient');
     shaderProgram.diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
@@ -627,8 +627,8 @@ function tick() {
 
 function start() {
     canvas = document.getElementById('glcanvas');
-    CANVAS_X_OFFSET = $('#glcanvas').offset()['left'];
-    CANVAS_Y_OFFSET = $('#glcanvas').offset()['top'];
+    canvasXOffset = $('#glcanvas').offset()['left'];
+    canvasYOffset = $('#glcanvas').offset()['top'];
     gl = initWebGL(canvas);
     initShaders();
     rubiksCube = new RubiksCube();
@@ -685,19 +685,19 @@ function screenToObjectCoordinates(x, y) {
 
 function rotate(event) {
     if (rightMouseDown) {
-        x_new_right = event.pageX;
-        y_new_right = event.pageY;
-        var delta_x = (x_new_right - x_init_right) / 50;
-        var delta_y = (y_new_right - y_init_right) / 50;
+        xNewRight = event.pageX;
+        yNewRight = event.pageY;
+        var delta_x = (xNewRight - xInitRight) / 50;
+        var delta_y = (yNewRight - yInitRight) / 50;
         var axis = [delta_y, -delta_x, 0];
         var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         var newRotationMatrix = glMatrix.mat4.fromRotation(glMatrix.mat4.create(), glMatrix.glMatrix.toRadian(degrees), axis);
         glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     } else if (leftMouseDown && !isRotating) {
-        new_coordinates = screenToObjectCoordinates(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
-        var direction = glMatrix.vec3.subtract(glMatrix.vec3.create(), new_coordinates, init_coordinates);
+        newCoordinates = screenToObjectCoordinates(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
+        var direction = glMatrix.vec3.subtract(glMatrix.vec3.create(), newCoordinates, initCoordinates);
         glMatrix.vec3.normalize(direction, direction);
-        rubiksCube.setRotationAxis(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET, direction);
+        rubiksCube.setRotationAxis(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset, direction);
         rubiksCube.setRotatedCubes();
         isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
     }
@@ -705,17 +705,17 @@ function rotate(event) {
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
-        rubiksCube.selectCube(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
+        rubiksCube.selectCube(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
         if (rubiksCube.selectedCube) {
-            init_coordinates = screenToObjectCoordinates(event.pageX - CANVAS_X_OFFSET, canvas.height - event.pageY + CANVAS_Y_OFFSET);
+            initCoordinates = screenToObjectCoordinates(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
             setTimeout(function() {
                 leftMouseDown = true;
             }, 50);
         }
     } else if (isRightMouse(event)) {
         rightMouseDown = true;
-        x_init_right = event.pageX;
-        y_init_right = event.pageY;
+        xInitRight = event.pageX;
+        yInitRight = event.pageY;
     }
 }
 
@@ -813,8 +813,8 @@ $(document).ready(function() {
     $('#glcanvas').mouseup(endRotate);
     $('body').keypress(togglePerspective);
     $(window).resize(function() {
-        CANVAS_X_OFFSET = $('#glcanvas').offset()['left'];
-        CANVAS_Y_OFFSET = $('#glcanvas').offset()['top'];
+        canvasXOffset = $('#glcanvas').offset()['left'];
+        canvasYOffset = $('#glcanvas').offset()['top'];
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
     });
