@@ -811,6 +811,7 @@ $(document).ready(function() {
     $('#glcanvas').mousedown(startRotate);
     $('#glcanvas').mousemove(rotate);
     $('#glcanvas').mouseup(endRotate);
+    $('#glcanvas').mouseout(endRotate);
     $('body').keypress(togglePerspective);
     $(window).resize(function() {
         canvasXOffset = $('#glcanvas').offset()['left'];
