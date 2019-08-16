@@ -720,11 +720,8 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    if (isLeftMouse(event)) {
-        leftMouseDown = false;
-    } else if (isRightMouse(event)) {
-        rightMouseDown = false;
-    }
+    leftMouseDown = false;
+    rightMouseDown = false;
 }
 
 function isLeftMouse(event) {
