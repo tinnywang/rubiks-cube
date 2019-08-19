@@ -13,6 +13,8 @@ var yNewRight;
 var leftMouseDown = false;
 var initCoordinates;
 var newCoordinates;
+var initCube;
+var newCube;
 var isRotating = false;
 var isScrambling = false;
 
@@ -34,12 +36,10 @@ const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 
 function RubiksCube() {
-    this.selectedCube = null; // an instance of Cube
     this.rotatedCubes = null; // an array of Cubes
     this.rotationAxis = null; // a vec3
     this.axisConstant = null; // X_AXIS, Y_AXIS, or Z_AXIS
     this.rotationAngle = 0;
-    this.degrees = DEGREES;
     this.scrambleCycles = 0;
     this.cubeVerticesBuffer = null;
     this.cubeNormalsBuffer = null;
@@ -181,14 +181,11 @@ function RubiksCube() {
     }
 
     /*
-     * Sets this.rotatedCubes to an array of cubes that share the same AXIS coordinate as this.selectedCube.
+     * Sets this.rotatedCubes to an array of cubes that share the same AXIS coordinate as cube.
      * AXIS is 0, 1, or 2 for the x-, y-, or z-coordinate.
      */
-    this.setRotatedCubes = function() {
-        if (!this.rotationAxis || !this.selectedCube) {
-            return;
-        }
-        var value = this.selectedCube.coordinates[this.axisConstant];
+    this.setRotatedCubes = function(cube) {
+        var value = cube.coordinates[this.axisConstant];
         var cubes = [];
         for (var r = 0; r < 3; r++) {
             for (var g = 0; g < 3; g++) {
@@ -206,7 +203,7 @@ function RubiksCube() {
     }
 
     /*
-     * Rotates this.rotatedCubes around this.rotationAxis by this.degrees.
+     * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
     this.rotateLayer = function() {
         if (Math.abs(this.rotationAngle) == 90) {
@@ -216,12 +213,11 @@ function RubiksCube() {
             return;
         }
 
-        this.rotationAngle += this.degrees;
+        this.rotationAngle += DEGREES;
         var newRotationMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(this.degrees), this.rotationAxis);
+        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(DEGREES), this.rotationAxis);
 
-        for (var c in this.rotatedCubes) {
-            var cube = this.rotatedCubes[c];
+        for (var cube of this.rotatedCubes) {
             glMatrix.vec3.transformMat4(cube.coordinates, cube.coordinates, newRotationMatrix);
             glMatrix.mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
         }
@@ -243,7 +239,7 @@ function RubiksCube() {
         var pixelValues = new Uint8Array(4);
         gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        this.selectedCube = this.colorToCube(pixelValues);
+        return this.colorToCube(pixelValues);
     }
 
     this.setRotationAxis = function(x, y, direction) {
@@ -253,12 +249,10 @@ function RubiksCube() {
         }
         var axis = glMatrix.vec3.create();
         glMatrix.vec3.cross(axis, normal, direction);
+        glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
+
         this.rotationAxis = glMatrix.vec3.length(axis) == 1 ? axis : null;
-        if (!this.rotationAxis) {
-            this.axisConstant = null;
-            return;
-        }
         if (Math.abs(axis[0]) == 1) {
             this.axisConstant = X_AXIS;
         } else if (Math.abs(axis[1]) == 1) {
@@ -277,7 +271,7 @@ function RubiksCube() {
             var r = Math.floor(Math.random() * 3)
             var g = Math.floor(Math.random() * 3)
             var b = Math.floor(Math.random() * 3)
-            this.selectedCube = this.cubes[r][g][b];
+            var cube = this.cubes[r][g][b];
 
             var axes = [X_AXIS, Y_AXIS, Z_AXIS];
             this.axisConstant = axes[Math.floor(Math.random() * 3)];
@@ -292,7 +286,7 @@ function RubiksCube() {
                 glMatrix.vec3.scale(this.rotationAxis, this.rotationAxis, -1);
             }
 
-            this.setRotatedCubes();
+            this.setRotatedCubes(cube);
             isRotating = true;
             this.scrambleCycles--;
         }
@@ -704,25 +698,14 @@ function rotate(event) {
         var newRotationMatrix = glMatrix.mat4.create();
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
         glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
-    } else if (leftMouseDown && !isRotating) {
-        newCoordinates = screenToObjectCoordinates(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
-        var direction = glMatrix.vec3.create();
-        glMatrix.vec3.subtract(direction, newCoordinates, initCoordinates);
-        glMatrix.vec3.normalize(direction, direction);
-        rubiksCube.setRotationAxis(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset, direction);
-        rubiksCube.setRotatedCubes();
-        isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
     }
 }
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
-        rubiksCube.selectCube(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
-        if (rubiksCube.selectedCube) {
-            initCoordinates = screenToObjectCoordinates(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
-            setTimeout(function() {
-                leftMouseDown = true;
-            }, 50);
+        initCube = rubiksCube.selectCube(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
+        if (initCube) {
+            leftMouseDown = true;
         }
     } else if (isRightMouse(event)) {
         rightMouseDown = true;
@@ -732,7 +715,19 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    leftMouseDown = false;
+    if (leftMouseDown) {
+        leftMouseDown = false;
+        var x = event.pageX - canvasXOffset;
+        var y = canvas.height - event.pageY + canvasYOffset;
+        newCube = rubiksCube.selectCube(x, y);
+        if (newCube) {
+            var direction = glMatrix.vec3.create();
+            glMatrix.vec3.subtract(direction, newCube.coordinates, initCube.coordinates);
+            rubiksCube.setRotationAxis(x, y, direction);
+            rubiksCube.setRotatedCubes(initCube);
+            isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
+        }
+    }
     rightMouseDown = false;
 }
 
