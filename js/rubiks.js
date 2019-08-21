@@ -29,9 +29,6 @@ const DEGREES = 5;
 const MARGIN_OF_ERROR = 1e-3;
 const FOV = -45;
 const STICKER_DEPTH = 0.96;
-const X_AXIS = 0;
-const Y_AXIS = 1;
-const Z_AXIS = 2;
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 
@@ -730,7 +727,7 @@ function endRotate(event) {
             glMatrix.vec3.subtract(direction, newCube.coordinates, initCube.coordinates);
             rubiksCube.setRotationAxis(x, y, direction);
             rubiksCube.setRotatedCubes(initCube, newCube, rubiksCube.rotationAxis);
-            isRotating = rubiksCube.rotatedCubes && rubiksCube.rotationAxis;
+            isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
         }
     }
     rightMouseDown = false;
