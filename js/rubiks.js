@@ -47,18 +47,27 @@ function RubiksCube() {
     this.pickingTexture = null;
     this.pickingRenderBuffer = null;
     this.cubes = new Array(3);
+    this.stickers = new Map(); // Map from rgba picking color to sticker.
 
     this.init = function() {
         this.initTextureFramebuffer();
         this.initCubeBuffers();
         this.initStickerBuffers();
+
         for (var r = 0; r < 3; r++) {
             this.cubes[r] = new Array(3);
             for (var g = 0; g < 3; g++) {
                 this.cubes[r][g] = new Array(3);
                 for (var b = 0; b < 3; b++) {
                     var coordinates = [r - 1, g - 1, b - 1];
-                    this.cubes[r][g][b] = new Cube(this, coordinates);
+                    var cube = new Cube(this, coordinates);
+                    this.cubes[r][g][b] = cube;
+
+                    for (var sticker of cube.stickers) {
+                        var color = glMatrix.vec4.clone(sticker.pickingColor);
+                        glMatrix.vec4.scale(color, color, 255);
+                        this.stickers.set(color.toString(), sticker);
+                    }
                 }
             }
         }
@@ -231,64 +240,20 @@ function RubiksCube() {
         }
     }
 
-    this.colorToCube = function(rgba) {
-        var r = rgba[0];
-        var g = rgba[1];
-        var b = rgba[2];
-
-        if (r == 255 && g == 255 && b == 255) { // clicked outside the cube
-            return null;
-        }
-
-        for (var i = 0; i < 3; i++) {
-            for (var j = 0; j < 3; j++) {
-                for (var k = 0; k < 3; k++) {
-                    var cube = this.cubes[i][j][k];
-                    for (var s of cube.stickers) {
-                        var sr = s.pickingColor[0] * 255;
-                        var sg = s.pickingColor[1] * 255;
-                        var sb = s.pickingColor[2] * 255;
-                        if (sr == r && sg == g && sb == b) {
-                            return [cube, s.normal];
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
-    }
-
-    this.selectCube = function(x, y) {
+    this.select = function(x, y) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
         var pixelValues = new Uint8Array(4);
         gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        var results = this.colorToCube(pixelValues);
-        if (!results) {
-            return null;
-        }
-        return results[0];
+        return this.stickers.get(pixelValues.toString());
     }
 
-    this.setRotationAxis = function(x, y, direction) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-        var pixelValues = new Uint8Array(4);
-        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        var results = this.colorToCube(pixelValues);
-        if (!results){
-            return null;
-        }
-        var normal = results[1];
-        if (!normal) {
+    this.setRotationAxis = function(selected, direction) {
+        if (!selected) {
             return;
         }
-
         var axis = glMatrix.vec3.create();
-        glMatrix.vec3.cross(axis, normal, direction);
+        glMatrix.vec3.cross(axis, selected.normal, direction);
         glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
 
@@ -631,8 +596,9 @@ function rotate(event) {
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
-        initCube = rubiksCube.selectCube(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
-        if (initCube) {
+        var selected = rubiksCube.select(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
+        if (selected) {
+            initCube = selected.cube;
             leftMouseDown = true;
         }
     } else if (isRightMouse(event)) {
@@ -647,11 +613,12 @@ function endRotate(event) {
         leftMouseDown = false;
         var x = event.pageX - canvasXOffset;
         var y = canvas.height - event.pageY + canvasYOffset;
-        newCube = rubiksCube.selectCube(x, y);
-        if (newCube) {
+        var selected = rubiksCube.select(x, y);
+        if (selected) {
+            newCube = selected.cube;
             var direction = glMatrix.vec3.create();
             glMatrix.vec3.subtract(direction, newCube.coordinates, initCube.coordinates);
-            rubiksCube.setRotationAxis(x, y, direction);
+            rubiksCube.setRotationAxis(selected, direction);
             rubiksCube.setRotatedCubes(initCube, newCube, rubiksCube.rotationAxis);
             isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
         }
