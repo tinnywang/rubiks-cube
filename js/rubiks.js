@@ -1,3 +1,13 @@
+const EYE = [0, 0, -20];
+const CENTER = [0, 0, 0];
+const UP = [0, 1, 0];
+const DEGREES = 5;
+const MARGIN_OF_ERROR = 1e-3;
+const FOV = -45;
+const STICKER_DEPTH = 0.96;
+const LEFT_MOUSE = 0;
+const RIGHT_MOUSE = 2;
+
 var canvas;
 var canvasXOffset;
 var canvasYOffset;
@@ -18,19 +28,10 @@ var newCube;
 var isRotating = false;
 var isScrambling = false;
 
+var viewMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
 var rotationMatrix = glMatrix.mat4.create();
-
-const EYE = [0, 0, -20];
-const CENTER = [0, 0, 0];
-const UP = [0, 1, 0];
-const DEGREES = 5;
-const MARGIN_OF_ERROR = 1e-3;
-const FOV = -45;
-const STICKER_DEPTH = 0.96;
-const LEFT_MOUSE = 0;
-const RIGHT_MOUSE = 2;
 
 function RubiksCube() {
     this.rotatedCubes = null; // an array of Cubes
@@ -133,7 +134,7 @@ function RubiksCube() {
         gl.uniform1i(shaderProgram.lighting, 1);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        glMatrix.mat4.lookAt(modelViewMatrix, EYE, CENTER, UP);
+        glMatrix.mat4.copy(modelViewMatrix, viewMatrix);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
         for (var r = 0; r < 3; r++) {
@@ -156,7 +157,7 @@ function RubiksCube() {
         gl.uniform1i(shaderProgram.lighting, 0);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
-        glMatrix.mat4.lookAt(modelViewMatrix, EYE, CENTER, UP);
+        glMatrix.mat4.copy(modelViewMatrix, viewMatrix);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
         for (var r = 0; r < 3; r++) {
@@ -555,8 +556,8 @@ function setMatrixUniforms() {
 
 function unproject(dest, vec, view, proj, viewport) {
     var v = glMatrix.vec4.fromValues(
-        (vec[0] - viewport[0]) * 2.0 / viewport[2] - 1.0,
-        (vec[1] - viewport[1]) * 2.0 / viewport[3] - 1.0,
+        (2.0 * ((vec[0] - viewport[0]) / viewport[2])) - 1.0,
+        1.0 - (2.0 * (vec[1] - viewport[1]) / viewport[3]),
         2.0 * vec[2] - 1.0,
         1.0
     );
@@ -570,13 +571,15 @@ function unproject(dest, vec, view, proj, viewport) {
         return null;
     }
 
-    return glMatrix.vec3.set(dest, v[0] / v[3], v[1] / v[3], v[2] / v[3]);
+    glMatrix.vec3.set(dest, v[0] / v[3], v[1] / v[3], v[2] / v[3]);
+    console.log(dest);
+    return dest;
 }
 
 function screenToObjectCoordinates(x, y) {
     var screenCoordinates = [x, y, 0];
     var objectCoordinates = glMatrix.vec3.create();
-    unproject(objectCoordinates, screenCoordinates, modelViewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
+    unproject(objectCoordinates, screenCoordinates, viewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
     return objectCoordinates
 }
 
@@ -596,6 +599,7 @@ function rotate(event) {
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
+        screenToObjectCoordinates(event.pageX - canvasXOffset, canvas.height - event.pageY - canvasYOffset);
         var selected = rubiksCube.select(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
         if (selected) {
             initCube = selected.cube;
