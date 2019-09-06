@@ -24,8 +24,6 @@ var yInitRight;
 var xNewRight;
 var yNewRight;
 var leftMouseDown = false;
-var initCoordinates;
-var newCoordinates;
 var initCube;
 var newCube;
 var isRotating = false;
@@ -556,32 +554,6 @@ function setMatrixUniforms() {
     glMatrix.mat3.fromMat4(normalMatrix3, normalMatrix);
     var normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
-}
-
-function unproject(vec, view, proj, viewport) {
-    // Normalized device coordinates (NDC)
-    var ndc = glMatrix.vec4.fromValues(
-        (2.0 * ((vec[0] - viewport[0]) / viewport[2])) - 1.0,
-        1.0 - (2.0 * (vec[1] - viewport[1]) / viewport[3]),
-        2.0 * vec[2] - 1.0,
-        1.0
-    );
-
-    var m = glMatrix.mat4.create();
-    glMatrix.mat4.multiply(m, proj, view);
-    glMatrix.mat4.invert(m, m);
-
-    glMatrix.vec4.transformMat4(ndc, ndc, m);
-    if (ndc[3] == 0.0) {
-        return null;
-    }
-
-    return glMatrix.vec3.fromValues(ndc[0] / ndc[3], ndc[1] / ndc[3], ndc[2] / ndc[3]);
-}
-
-function screenToObjectCoordinates(x, y) {
-    var screenCoordinates = [x, y, 0];
-    return unproject(screenCoordinates, modelViewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
 }
 
 function rotate(event) {
