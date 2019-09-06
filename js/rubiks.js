@@ -1,9 +1,12 @@
 const EYE = [0, 0, -20];
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
+const viewMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const DEGREES = 5;
 const MARGIN_OF_ERROR = 1e-3;
-const FOV = -45;
+const FOV = glMatrix.glMatrix.toRadian(-70);
+const Z_NEAR = 1;
+const Z_FAR = 100;
 const STICKER_DEPTH = 0.96;
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
@@ -28,7 +31,6 @@ var newCube;
 var isRotating = false;
 var isScrambling = false;
 
-var viewMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
 var rotationMatrix = glMatrix.mat4.create();
@@ -65,6 +67,7 @@ function RubiksCube() {
                     this.cubes[r][g][b] = cube;
 
                     for (var sticker of cube.stickers) {
+                        // Transform rgba values from floats in [0, 1] to ints in [0, 255].
                         var color = glMatrix.vec4.clone(sticker.pickingColor);
                         glMatrix.vec4.scale(color, color, 255);
                         this.stickers.set(color.toString(), sticker);
@@ -133,7 +136,7 @@ function RubiksCube() {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.uniform1i(shaderProgram.lighting, 1);
 
-        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
+        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
         glMatrix.mat4.copy(modelViewMatrix, viewMatrix);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
@@ -156,7 +159,7 @@ function RubiksCube() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform1i(shaderProgram.lighting, 0);
 
-        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, 0.1, 100.0);
+        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
         glMatrix.mat4.copy(modelViewMatrix, viewMatrix);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
@@ -253,6 +256,7 @@ function RubiksCube() {
         if (!selected) {
             return;
         }
+
         var axis = glMatrix.vec3.create();
         glMatrix.vec3.cross(axis, selected.normal, direction);
         glMatrix.vec3.normalize(axis, axis);
@@ -554,8 +558,9 @@ function setMatrixUniforms() {
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
 
-function unproject(dest, vec, view, proj, viewport) {
-    var v = glMatrix.vec4.fromValues(
+function unproject(vec, view, proj, viewport) {
+    // Normalized device coordinates (NDC)
+    var ndc = glMatrix.vec4.fromValues(
         (2.0 * ((vec[0] - viewport[0]) / viewport[2])) - 1.0,
         1.0 - (2.0 * (vec[1] - viewport[1]) / viewport[3]),
         2.0 * vec[2] - 1.0,
@@ -566,21 +571,17 @@ function unproject(dest, vec, view, proj, viewport) {
     glMatrix.mat4.multiply(m, proj, view);
     glMatrix.mat4.invert(m, m);
 
-    glMatrix.vec4.transformMat4(v, v, m);
-    if (v[3] == 0.0) {
+    glMatrix.vec4.transformMat4(ndc, ndc, m);
+    if (ndc[3] == 0.0) {
         return null;
     }
 
-    glMatrix.vec3.set(dest, v[0] / v[3], v[1] / v[3], v[2] / v[3]);
-    console.log(dest);
-    return dest;
+    return glMatrix.vec3.fromValues(ndc[0] / ndc[3], ndc[1] / ndc[3], ndc[2] / ndc[3]);
 }
 
 function screenToObjectCoordinates(x, y) {
     var screenCoordinates = [x, y, 0];
-    var objectCoordinates = glMatrix.vec3.create();
-    unproject(objectCoordinates, screenCoordinates, viewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
-    return objectCoordinates
+    return unproject(screenCoordinates, modelViewMatrix, projectionMatrix, [0, 0, canvas.width, canvas.height])
 }
 
 function rotate(event) {
@@ -599,7 +600,6 @@ function rotate(event) {
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
-        screenToObjectCoordinates(event.pageX - canvasXOffset, canvas.height - event.pageY - canvasYOffset);
         var selected = rubiksCube.select(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
         if (selected) {
             initCube = selected.cube;
