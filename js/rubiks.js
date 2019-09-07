@@ -24,8 +24,8 @@ var yInitRight;
 var xNewRight;
 var yNewRight;
 var leftMouseDown = false;
-var initCube;
-var newCube;
+var initSticker;
+var newSticker;
 var isRotating = false;
 var isScrambling = false;
 
@@ -179,10 +179,13 @@ function RubiksCube() {
     /*
      * Sets this.rotatedCubes to an array of cubes that are in the same plane as initCube, newCube, and axis.
      */
-    this.setRotatedCubes = function(initCube, newCube, axis) {
+    this.setRotatedCubes = function(initSticker, newSticker, axis) {
+        if (!initSticker || !newSticker || !axis) {
+            return;
+        }
         this.rotatedCubes = null;
 
-        if (axis == null) {
+        if (!axis) {
             return;
         }
 
@@ -193,8 +196,8 @@ function RubiksCube() {
             }
         }
 
-        var initCoordinate = initCube.coordinates[i];
-        var newCoordinate = newCube.coordinates[i];
+        var initCoordinate = initSticker.cube.coordinates[i];
+        var newCoordinate = newSticker.cube.coordinates[i];
         if (Math.abs(newCoordinate - initCoordinate) > MARGIN_OF_ERROR) {
             return;
         }
@@ -220,6 +223,10 @@ function RubiksCube() {
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
     this.rotateLayer = function() {
+        if (!this.rotationAxis) {
+            return;
+        }
+
         if (Math.abs(this.rotationAngle) == 90) {
             this.rotationAngle = 0;
             isRotating = false;
@@ -250,13 +257,24 @@ function RubiksCube() {
         return this.stickers.get(pixelValues.toString());
     }
 
-    this.setRotationAxis = function(selected, direction) {
-        if (!selected) {
+    this.setRotationAxis = function(initSticker, newSticker) {
+        if (!initSticker || !newSticker) {
             return;
         }
 
         var axis = glMatrix.vec3.create();
-        glMatrix.vec3.cross(axis, selected.normal, direction);
+        var initCoordinates = initSticker.cube.coordinates;
+        var newCoordinates = newSticker.cube.coordinates;
+
+        // The selected stickers are on the same face of the Rubik's cube.
+        if (glMatrix.vec3.equals(initSticker.normal, newSticker.normal)) {
+            var direction = glMatrix.vec3.create();
+            glMatrix.vec3.subtract(direction, newCoordinates, initCoordinates);
+            glMatrix.vec3.cross(axis, initSticker.normal, direction);
+        } else {
+            glMatrix.vec3.cross(axis, initSticker.normal, newSticker.normal);
+        }
+
         glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
 
@@ -268,22 +286,24 @@ function RubiksCube() {
             isRotating = false;
             isScrambling = false;
         } else {
-            var axis = glMatrix.vec3.create();
-            var i = Math.floor(Math.random() * 3)
-            axis[i] = Math.random < 0.5 ? 1 : -1;
-            this.rotationAxis = axis;
-
-            cube = this.randomCube();
-            this.setRotatedCubes(cube, cube, this.rotationAxis);
+            var cube = this.randomCube();
+            var i = Math.floor(Math.random() * 3);
+            let initSticker = cube.stickers[i];
+            let newSticker = cube.stickers[(i + 1) % 2];
+            this.setRotationAxis(initSticker, newSticker);
+            this.setRotatedCubes(initSticker, newSticker, this.rotationAxis);
             isRotating = true;
             this.scrambleCycles--;
         }
     }
 
     this.randomCube = function() {
-        var r = Math.floor(Math.random() * 3)
-        var g = Math.floor(Math.random() * 3)
-        var b = Math.floor(Math.random() * 3)
+        var r, g, b;
+        do {
+            r = Math.floor(Math.random() * 3);
+            g = Math.floor(Math.random() * 3);
+            b = Math.floor(Math.random() * 3);
+        } while (r == 0 && g == 0 && b == 0)
         return this.cubes[r][g][b];
     }
 }
@@ -572,9 +592,8 @@ function rotate(event) {
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
-        var selected = rubiksCube.select(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
-        if (selected) {
-            initCube = selected.cube;
+        initSticker = rubiksCube.select(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
+        if (initSticker) {
             leftMouseDown = true;
         }
     } else if (isRightMouse(event)) {
@@ -589,13 +608,10 @@ function endRotate(event) {
         leftMouseDown = false;
         var x = event.pageX - canvasXOffset;
         var y = canvas.height - event.pageY + canvasYOffset;
-        var selected = rubiksCube.select(x, y);
-        if (selected) {
-            newCube = selected.cube;
-            var direction = glMatrix.vec3.create();
-            glMatrix.vec3.subtract(direction, newCube.coordinates, initCube.coordinates);
-            rubiksCube.setRotationAxis(selected, direction);
-            rubiksCube.setRotatedCubes(initCube, newCube, rubiksCube.rotationAxis);
+        newSticker = rubiksCube.select(x, y);
+        if (newSticker) {
+            rubiksCube.setRotationAxis(initSticker, newSticker);
+            rubiksCube.setRotatedCubes(initSticker, newSticker, rubiksCube.rotationAxis);
             isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
         }
     }
