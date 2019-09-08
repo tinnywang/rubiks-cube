@@ -8,6 +8,7 @@ const FOV = glMatrix.glMatrix.toRadian(-70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
 const STICKER_DEPTH = 0.96;
+const STICKER_SCALE = 0.85; // a sticker covers 85% of a cube's face
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 
@@ -144,7 +145,7 @@ function RubiksCube() {
                     var cube = this.cubes[r][g][b];
                     cube.draw();
                     for (var sticker of cube.stickers) {
-                        sticker.draw(sticker.color);
+                        sticker.draw(sticker.color, STICKER_SCALE);
                     }
                 }
             }
@@ -431,10 +432,17 @@ function Sticker(cube, color, normal, transform) {
         return hash;
     }
 
-    this.draw = function(color) {
+    this.draw = function(color, scale) {
         var mvMatrix = glMatrix.mat4.create();
         glMatrix.mat4.copy(mvMatrix, modelViewMatrix)
         this.transform();
+        if (scale) {
+          glMatrix.mat4.scale(
+            modelViewMatrix,
+            modelViewMatrix,
+            glMatrix.vec3.fromValues(scale, scale, scale)
+          );
+        }
         setMatrixUniforms();
 
         gl.uniform4fv(shaderProgram.ambient, color);
