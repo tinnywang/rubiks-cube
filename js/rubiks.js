@@ -540,11 +540,8 @@ function drawScene() {
 
     rubiksCube.drawToPickingFramebuffer();
     rubiksCube.draw();
-}
 
-function tick() {
-    requestAnimationFrame(tick);
-    drawScene();
+    requestAnimationFrame(drawScene);
 }
 
 function start() {
@@ -563,7 +560,7 @@ function start() {
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        tick();
+        drawScene();
     }
 }
 
@@ -665,7 +662,7 @@ function backView() {
 
 function perspectiveView() {
     glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
     glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-45));
 }
 
