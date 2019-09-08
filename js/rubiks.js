@@ -1,7 +1,7 @@
 const EYE = [0, 0, -20];
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
-const viewMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
+const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const DEGREES = 5;
 const MARGIN_OF_ERROR = 1e-3;
 const FOV = glMatrix.glMatrix.toRadian(-70);
@@ -56,18 +56,18 @@ function RubiksCube() {
         this.initCubeBuffers();
         this.initStickerBuffers();
 
-        for (var r = 0; r < 3; r++) {
+        for (let r = 0; r < 3; r++) {
             this.cubes[r] = new Array(3);
-            for (var g = 0; g < 3; g++) {
+            for (let g = 0; g < 3; g++) {
                 this.cubes[r][g] = new Array(3);
-                for (var b = 0; b < 3; b++) {
-                    var coordinates = [r - 1, g - 1, b - 1];
-                    var cube = new Cube(this, coordinates);
+                for (let b = 0; b < 3; b++) {
+                    let coordinates = [r - 1, g - 1, b - 1];
+                    let cube = new Cube(this, coordinates);
                     this.cubes[r][g][b] = cube;
 
-                    for (var sticker of cube.stickers) {
+                    for (let sticker of cube.stickers) {
                         // Transform rgba values from floats in [0, 1] to ints in [0, 255].
-                        var color = glMatrix.vec4.clone(sticker.pickingColor);
+                        let color = glMatrix.vec4.clone(sticker.pickingColor);
                         glMatrix.vec4.scale(color, color, 255);
                         this.stickers.set(color.toString(), sticker);
                     }
@@ -136,15 +136,15 @@ function RubiksCube() {
         gl.uniform1i(shaderProgram.lighting, 1);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
-        glMatrix.mat4.copy(modelViewMatrix, viewMatrix);
+        glMatrix.mat4.copy(modelViewMatrix, VIEW_MATRIX);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
-        for (var r = 0; r < 3; r++) {
-            for (var g = 0; g < 3; g++) {
-                for (var b = 0; b < 3; b++) {
-                    var cube = this.cubes[r][g][b];
+        for (let r = 0; r < 3; r++) {
+            for (let g = 0; g < 3; g++) {
+                for (let b = 0; b < 3; b++) {
+                    let cube = this.cubes[r][g][b];
                     cube.draw();
-                    for (var sticker of cube.stickers) {
+                    for (let sticker of cube.stickers) {
                         sticker.draw(sticker.color, STICKER_SCALE);
                     }
                 }
@@ -159,14 +159,14 @@ function RubiksCube() {
         gl.uniform1i(shaderProgram.lighting, 0);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
-        glMatrix.mat4.copy(modelViewMatrix, viewMatrix);
+        glMatrix.mat4.copy(modelViewMatrix, VIEW_MATRIX);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
 
-        for (var r = 0; r < 3; r++) {
-            for (var g = 0; g < 3; g++) {
-                for (var b = 0; b < 3; b++) {
-                    var cube = this.cubes[r][g][b];
-                    for (var sticker of cube.stickers) {
+        for (let r = 0; r < 3; r++) {
+            for (let g = 0; g < 3; g++) {
+                for (let b = 0; b < 3; b++) {
+                    let cube = this.cubes[r][g][b];
+                    for (let sticker of cube.stickers) {
                         sticker.draw(sticker.pickingColor);
                     }
                 }
@@ -190,24 +190,23 @@ function RubiksCube() {
             return;
         }
 
-        var i = 0;
-        for (; i < axis.length; i++) {
+        for (var i = 0; i < axis.length; i++) {
             if (axis[i] != 0) {
                 break;
             }
         }
 
-        var initCoordinate = initSticker.cube.coordinates[i];
-        var newCoordinate = newSticker.cube.coordinates[i];
+        let initCoordinate = initSticker.cube.coordinates[i];
+        let newCoordinate = newSticker.cube.coordinates[i];
         if (Math.abs(newCoordinate - initCoordinate) > MARGIN_OF_ERROR) {
             return;
         }
 
-        var cubes = [];
-        for (var r = 0; r < 3; r++) {
-            for (var g = 0; g < 3; g++) {
-                for (var b = 0; b < 3; b++) {
-                    var c = this.cubes[r][g][b];
+        let cubes = [];
+        for (let r = 0; r < 3; r++) {
+            for (let g = 0; g < 3; g++) {
+                for (let b = 0; b < 3; b++) {
+                    let c = this.cubes[r][g][b];
                     if (Math.abs(c.coordinates[i] - initCoordinate) < MARGIN_OF_ERROR) {
                         cubes.push(c);
                     }
@@ -236,14 +235,14 @@ function RubiksCube() {
         }
 
         this.rotationAngle += DEGREES;
-        var newRotationMatrix = glMatrix.mat4.create();
+        let newRotationMatrix = glMatrix.mat4.create();
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(DEGREES), this.rotationAxis);
 
-        for (var cube of this.rotatedCubes) {
+        for (let cube of this.rotatedCubes) {
             glMatrix.vec3.transformMat4(cube.coordinates, cube.coordinates, newRotationMatrix);
             glMatrix.mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
 
-            for (var sticker of cube.stickers) {
+            for (let sticker of cube.stickers) {
                 glMatrix.vec3.transformMat4(sticker.normal, sticker.normal, newRotationMatrix);
                 glMatrix.vec3.normalize(sticker.normal, sticker.normal)
             }
@@ -252,7 +251,7 @@ function RubiksCube() {
 
     this.select = function(x, y) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-        var pixelValues = new Uint8Array(4);
+        let pixelValues = new Uint8Array(4);
         gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         return this.stickers.get(pixelValues.toString());
@@ -263,13 +262,13 @@ function RubiksCube() {
             return;
         }
 
-        var axis = glMatrix.vec3.create();
-        var initCoordinates = initSticker.cube.coordinates;
-        var newCoordinates = newSticker.cube.coordinates;
+        let axis = glMatrix.vec3.create();
+        let initCoordinates = initSticker.cube.coordinates;
+        let newCoordinates = newSticker.cube.coordinates;
 
         // The selected stickers are on the same face of the Rubik's cube.
         if (glMatrix.vec3.equals(initSticker.normal, newSticker.normal)) {
-            var direction = glMatrix.vec3.create();
+            let direction = glMatrix.vec3.create();
             glMatrix.vec3.subtract(direction, newCoordinates, initCoordinates);
             glMatrix.vec3.cross(axis, initSticker.normal, direction);
         } else {
@@ -287,8 +286,8 @@ function RubiksCube() {
             isRotating = false;
             isScrambling = false;
         } else {
-            var cube = this.randomCube();
-            var i = Math.floor(Math.random() * 3);
+            let cube = this.randomCube();
+            let i = Math.floor(Math.random() * 3);
             let initSticker = cube.stickers[i];
             let newSticker = cube.stickers[(i + 1) % 2];
             this.setRotationAxis(initSticker, newSticker);
@@ -299,7 +298,7 @@ function RubiksCube() {
     }
 
     this.randomCube = function() {
-        var r, g, b;
+        let r, g, b;
         do {
             r = Math.floor(Math.random() * 3);
             g = Math.floor(Math.random() * 3);
@@ -330,9 +329,9 @@ function Cube(rubiksCube, coordinates) {
     }
 
     this.initStickers = function() {
-        var x = this.coordinates[0];
-        var y = this.coordinates[1];
-        var z = this.coordinates[2];
+        let x = this.coordinates[0];
+        let y = this.coordinates[1];
+        let z = this.coordinates[2];
         if (x == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['red'], [-1, 0, 0], function() {
                 this.cube.transform();
@@ -382,7 +381,7 @@ function Cube(rubiksCube, coordinates) {
     }
 
     this.draw = function() {
-        var mvMatrix = glMatrix.mat4.create();
+        let mvMatrix = glMatrix.mat4.create();
         glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
         this.transform();
         setMatrixUniforms();
@@ -413,19 +412,19 @@ function Sticker(cube, color, normal, transform) {
     this.pickingColor = null;
 
     this.init = function() {
-        var mask = 0xFF;
-        var hash = this.hashCode();
-        var color = [hash & mask, (hash >> 8) & mask, (hash >> 16) & mask];
+        let mask = 0xFF;
+        let hash = this.hashCode();
+        let color = [hash & mask, (hash >> 8) & mask, (hash >> 16) & mask];
         color = [color[0]/mask, color[1]/mask, color[2]/mask, 1];
         this.pickingColor = color;
     }
 
     // https://stackoverflow.com/a/7616484
     this.hashCode = function() {
-        var hash = 0;
-        var s = this.cube.coordinates + ':' + this.color + ':' + this.normal;
+        let hash = 0;
+        let s = this.cube.coordinates + ':' + this.color + ':' + this.normal;
 
-        for (var i = 0; i < s.length; i++) {
+        for (let i = 0; i < s.length; i++) {
             hash = ((hash << 5) - hash) + s.charCodeAt(i);
             hash |= 0;
         }
@@ -433,7 +432,7 @@ function Sticker(cube, color, normal, transform) {
     }
 
     this.draw = function(color, scale) {
-        var mvMatrix = glMatrix.mat4.create();
+        let mvMatrix = glMatrix.mat4.create();
         glMatrix.mat4.copy(mvMatrix, modelViewMatrix)
         this.transform();
         if (scale) {
@@ -481,19 +480,19 @@ function initWebGL(canvas) {
 }
 
 function getShader(gl, id) {
-    var shaderScript = document.getElementById(id);
+    let shaderScript = document.getElementById(id);
     if (!shaderScript) {
         return null;
     }
-    var source = '';
-    var currentChild = shaderScript.firstChild;
+    let source = '';
+    let currentChild = shaderScript.firstChild;
     while (currentChild) {
         if (currentChild.nodeType == currentChild.TEXT_NODE) {
             source += currentChild.textContent;
         }
         currentChild = currentChild.nextSibling;
     }
-    var shader;
+    let shader;
     if (shaderScript.type == 'x-shader/x-fragment') {
         shader = gl.createShader(gl.FRAGMENT_SHADER);
     } else if (shaderScript.type == 'x-shader/x-vertex') {
@@ -511,8 +510,8 @@ function getShader(gl, id) {
 }
 
 function initShaders() {
-    var fragmentShader = getShader(gl, 'fragmentShader');
-    var vertexShader = getShader(gl, 'vertexShader');
+    let fragmentShader = getShader(gl, 'fragmentShader');
+    let vertexShader = getShader(gl, 'vertexShader');
     shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, fragmentShader);
     gl.attachShader(shaderProgram, vertexShader);
@@ -569,18 +568,18 @@ function start() {
 }
 
 function setMatrixUniforms() {
-    var projectionUniform = gl.getUniformLocation(shaderProgram, 'projectionMatrix');
+    let projectionUniform = gl.getUniformLocation(shaderProgram, 'projectionMatrix');
     gl.uniformMatrix4fv(projectionUniform, false, projectionMatrix);
 
-    var modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
+    let modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
     gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
 
-    var normalMatrix = glMatrix.mat4.create();
+    let normalMatrix = glMatrix.mat4.create();
     glMatrix.mat4.invert(normalMatrix, modelViewMatrix);
     glMatrix.mat4.transpose(normalMatrix, normalMatrix);
-    var normalMatrix3 = glMatrix.mat3.create();
+    let normalMatrix3 = glMatrix.mat3.create();
     glMatrix.mat3.fromMat4(normalMatrix3, normalMatrix);
-    var normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
+    let normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
 
@@ -588,11 +587,11 @@ function rotate(event) {
     if (rightMouseDown) {
         xNewRight = event.pageX;
         yNewRight = event.pageY;
-        var delta_x = (xNewRight - xInitRight) / 50;
-        var delta_y = (yNewRight - yInitRight) / 50;
-        var axis = [delta_y, -delta_x, 0];
-        var degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
-        var newRotationMatrix = glMatrix.mat4.create();
+        let delta_x = (xNewRight - xInitRight) / 50;
+        let delta_y = (yNewRight - yInitRight) / 50;
+        let axis = [delta_y, -delta_x, 0];
+        let degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
+        let newRotationMatrix = glMatrix.mat4.create();
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
         glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     }
@@ -614,8 +613,8 @@ function startRotate(event) {
 function endRotate(event) {
     if (leftMouseDown) {
         leftMouseDown = false;
-        var x = event.pageX - canvasXOffset;
-        var y = canvas.height - event.pageY + canvasYOffset;
+        let x = event.pageX - canvasXOffset;
+        let y = canvas.height - event.pageY + canvasYOffset;
         newSticker = rubiksCube.select(x, y);
         if (newSticker) {
             rubiksCube.setRotationAxis(initSticker, newSticker);
