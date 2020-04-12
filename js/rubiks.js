@@ -34,7 +34,8 @@ var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
 var rotationMatrix = glMatrix.mat4.create();
 
-function RubiksCube() {
+function RubiksCube(data) {
+    this.data = data;
     this.rotatedCubes = null; // an array of Cubes
     this.rotationAxis = null; // a vec3
     this.rotationAngle = 0;
@@ -62,7 +63,7 @@ function RubiksCube() {
                 this.cubes[r][g] = new Array(3);
                 for (let b = 0; b < 3; b++) {
                     let coordinates = [r - 1, g - 1, b - 1];
-                    let cube = new Cube(this, coordinates);
+                    let cube = new Cube(this, coordinates, data[0]);
                     this.cubes[r][g][b] = cube;
 
                     for (let sticker of cube.stickers) {
@@ -101,15 +102,15 @@ function RubiksCube() {
         // vertices
         this.cubeVerticesBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeVerticesBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.vertices), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data[0].vertices), gl.STATIC_DRAW);
         // normals
         this.cubeNormalsBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalsBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeModel.normals), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data[0].normals), gl.STATIC_DRAW);
         // faces
         this.cubeFacesBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeModel.faces), gl.STATIC_DRAW);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.data[0].faces[0].vertex_indices), gl.STATIC_DRAW);
     }
 
     this.initStickerBuffers = function() {
@@ -144,9 +145,11 @@ function RubiksCube() {
                 for (let b = 0; b < 3; b++) {
                     let cube = this.cubes[r][g][b];
                     cube.draw();
+                    /*
                     for (let sticker of cube.stickers) {
                         sticker.draw(sticker.color, STICKER_SCALE);
                     }
+                    */
                 }
             }
         }
@@ -308,9 +311,10 @@ function RubiksCube() {
     }
 }
 
-function Cube(rubiksCube, coordinates) {
+function Cube(rubiksCube, coordinates, data) {
     this.rubiksCube = rubiksCube;
     this.coordinates = coordinates;
+    this.data = data;
     this.rotationMatrix = glMatrix.mat4.create();
     this.translationVector = glMatrix.vec3.create();
     this.stickers = [];
@@ -386,10 +390,11 @@ function Cube(rubiksCube, coordinates) {
         this.transform();
         setMatrixUniforms();
 
-        gl.uniform4fv(shaderProgram.ambient, cubeModel.ambient);
-        gl.uniform4fv(shaderProgram.diffuse, cubeModel.diffuse);
-        gl.uniform4fv(shaderProgram.specular, cubeModel.specular);
-        gl.uniform1f(shaderProgram.shininess, cubeModel.shininess);
+        let material = data.faces[0].material;
+        gl.uniform4fv(shaderProgram.ambient, vec3ToVec4(material.ambient));
+        gl.uniform4fv(shaderProgram.diffuse, vec3ToVec4(material.diffuse));
+        gl.uniform4fv(shaderProgram.specular, vec3ToVec4(material.specular));
+        gl.uniform1f(shaderProgram.shininess, material.specular_exponent);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
@@ -398,9 +403,13 @@ function Cube(rubiksCube, coordinates) {
         gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
         // faces
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
-        gl.drawElements(gl.TRIANGLES, cubeModel.faces.length, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, data.faces[0].vertex_indices.length, gl.UNSIGNED_SHORT, 0);
 
         glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
+        
+        for (let sticker of this.stickers) {
+            sticker.draw(sticker.color, STICKER_SCALE);
+        }
     }
 }
 
@@ -479,6 +488,10 @@ function initWebGL(canvas) {
     return gl;
 }
 
+function vec3ToVec4(vec3) {
+    return glMatrix.vec4.fromValues(vec3.x, vec3.y, vec3.z, 1);
+}
+
 function getShader(gl, id) {
     let shaderScript = document.getElementById(id);
     if (!shaderScript) {
@@ -544,13 +557,13 @@ function drawScene() {
     requestAnimationFrame(drawScene);
 }
 
-function start() {
+function start(data) {
     canvas = document.getElementById('glcanvas');
     canvasXOffset = $('#glcanvas').offset()['left'];
     canvasYOffset = $('#glcanvas').offset()['top'];
     gl = initWebGL(canvas);
     initShaders();
-    rubiksCube = new RubiksCube();
+    rubiksCube = new RubiksCube(data);
     perspectiveView();
 
     if (gl) {
@@ -701,17 +714,19 @@ function scramble() {
 }
 
 $(document).ready(function() {
-    start();
-    $('#glcanvas').bind('contextmenu', function(e) { return false; });
-    $('#glcanvas').mousedown(startRotate);
-    $('#glcanvas').mousemove(rotate);
-    $('#glcanvas').mouseup(endRotate);
-    $('#glcanvas').mouseout(endRotate);
-    $('body').keypress(togglePerspective);
-    $(window).resize(function() {
-        canvasXOffset = $('#glcanvas').offset()['left'];
-        canvasYOffset = $('#glcanvas').offset()['top'];
-        canvas.width = canvas.clientWidth;
-        canvas.height = canvas.clientHeight;
+    $.get('/models/rubiks-cube.json', function(data) {
+        start(data);
+        $('#glcanvas').bind('contextmenu', function(e) { return false; });
+        $('#glcanvas').mousedown(startRotate);
+        $('#glcanvas').mousemove(rotate);
+        $('#glcanvas').mouseup(endRotate);
+        $('#glcanvas').mouseout(endRotate);
+        $('body').keypress(togglePerspective);
+        $(window).resize(function() {
+            canvasXOffset = $('#glcanvas').offset()['left'];
+            canvasYOffset = $('#glcanvas').offset()['top'];
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        });
     });
 });
