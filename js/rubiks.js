@@ -55,7 +55,7 @@ function RubiksCube(data) {
     this.init = function() {
         this.initTextureFramebuffer();
         this.initCubeBuffers();
-        this.initStickerBuffers();
+        //this.initStickerBuffers();
 
         for (let r = 0; r < 3; r++) {
             this.cubes[r] = new Array(3);
@@ -108,9 +108,13 @@ function RubiksCube(data) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalsBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data[0].normals), gl.STATIC_DRAW);
         // faces
-        this.cubeFacesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.data[0].faces[0].vertex_indices), gl.STATIC_DRAW);
+       let buffer = new Array();
+       for (let faceGroup of data[0].faces) {
+           buffer.push(...faceGroup.vertex_indices);
+       }
+       this.cubeFacesBuffer = gl.createBuffer();
+       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
+       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(buffer), gl.STATIC_DRAW);
     }
 
     this.initStickerBuffers = function() {
@@ -336,6 +340,7 @@ function Cube(rubiksCube, coordinates, data) {
         let x = this.coordinates[0];
         let y = this.coordinates[1];
         let z = this.coordinates[2];
+        /*
         if (x == -1) {
             this.stickers.push(new Sticker(this, this.COLORS['red'], [-1, 0, 0], function() {
                 this.cube.transform();
@@ -375,6 +380,7 @@ function Cube(rubiksCube, coordinates, data) {
                 glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, glMatrix.glMatrix.toRadian(-90));
             }));
         }
+        */
     }
 
     this.init();
@@ -390,11 +396,36 @@ function Cube(rubiksCube, coordinates, data) {
         this.transform();
         setMatrixUniforms();
 
+        let offset = 0;
+        for (let faceGroup of this.data.faces) {
+            let material = faceGroup.material;
+            gl.uniform4fv(shaderProgram.ambient, rgbToVec4(material.ambient));
+            gl.uniform4fv(shaderProgram.diffuse, rgbToVec4(material.diffuse));
+            gl.uniform4fv(shaderProgram.specular, rgbToVec4(material.specular));
+            gl.uniform1f(shaderProgram.specularExponent, material.specular_exponent);
+            // vertices
+            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            // normals
+            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeNormalsBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
+            // faces
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
+            gl.drawElements(gl.TRIANGLES, faceGroup.vertex_indices.length, gl.UNSIGNED_SHORT, offset);
+
+            glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
+
+            // Offset must be a multiple of the size of the array buffer's type,
+            // and an unsigned short is 2 bytes.
+            offset += faceGroup.vertex_indices.length * 2;
+        }
+
+        /*
         let material = data.faces[0].material;
-        gl.uniform4fv(shaderProgram.ambient, vec3ToVec4(material.ambient));
-        gl.uniform4fv(shaderProgram.diffuse, vec3ToVec4(material.diffuse));
-        gl.uniform4fv(shaderProgram.specular, vec3ToVec4(material.specular));
-        gl.uniform1f(shaderProgram.shininess, material.specular_exponent);
+        gl.uniform4fv(shaderProgram.ambient, rgbToVec4(material.ambient));
+        gl.uniform4fv(shaderProgram.diffuse, rgbToVec4(material.diffuse));
+        gl.uniform4fv(shaderProgram.specular, rgbToVec4(material.specular));
+        gl.uniform1f(shaderProgram.specularExponent, material.specular_exponent);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
@@ -410,6 +441,7 @@ function Cube(rubiksCube, coordinates, data) {
         for (let sticker of this.stickers) {
             sticker.draw(sticker.color, STICKER_SCALE);
         }
+        */
     }
 }
 
@@ -456,7 +488,7 @@ function Sticker(cube, color, normal, transform) {
         gl.uniform4fv(shaderProgram.ambient, color);
         gl.uniform4fv(shaderProgram.diffuse, stickerModel.diffuse);
         gl.uniform4fv(shaderProgram.specular, stickerModel.specular);
-        gl.uniform1f(shaderProgram.shininess, stickerModel.shininess);
+        gl.uniform1f(shaderProgram.specularExponent, stickerModel.specular_exponent);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerVerticesBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
@@ -488,8 +520,8 @@ function initWebGL(canvas) {
     return gl;
 }
 
-function vec3ToVec4(vec3) {
-    return glMatrix.vec4.fromValues(vec3.x, vec3.y, vec3.z, 1);
+function rgbToVec4(rgb) {
+    return glMatrix.vec4.fromValues(rgb[0], rgb[1], rgb[2], 1);
 }
 
 function getShader(gl, id) {
@@ -543,7 +575,7 @@ function initShaders() {
     shaderProgram.ambient = gl.getUniformLocation(shaderProgram, 'ambient');
     shaderProgram.diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
     shaderProgram.specular = gl.getUniformLocation(shaderProgram, 'specular');
-    shaderProgram.shininess = gl.getUniformLocation(shaderProgram, 'shininess');
+    shaderProgram.specularExponent = gl.getUniformLocation(shaderProgram, 'specularExponent');
 }
 
 function drawScene() {
@@ -551,7 +583,7 @@ function drawScene() {
         rubiksCube.rotateLayer();
     }
 
-    rubiksCube.drawToPickingFramebuffer();
+    //rubiksCube.drawToPickingFramebuffer();
     rubiksCube.draw();
 
     requestAnimationFrame(drawScene);

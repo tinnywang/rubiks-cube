@@ -11,7 +11,6 @@
         <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
         <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
         <script src="js/gl-matrix-min.js"></script>
-        <script src="js/models.js"></script>
         <script src="js/rubiks.js"></script>
         <script id='fragmentShader' type='x-shader/x-fragment'>
             varying highp vec4 position;
@@ -22,7 +21,7 @@
             uniform highp vec4 ambient;
             uniform highp vec4 diffuse;
             uniform highp vec4 specular;
-            uniform highp float shininess;
+            uniform highp float specular_exponent;
 
             const highp vec4 lightPosition = vec4(0, -3, -6, 1); // point light
             const highp vec4 lightColor = vec4(1, 1, 1, 1);
@@ -35,7 +34,7 @@
                     highp vec3 lightDirection = normalize(lightPosition - position);
                     highp vec3 halfAngle = normalize(lightDirection + eyeDirection);
                     highp vec4 diffuseTerm = diffuse * lightColor * max(dot(normal, lightDirection), 0.0);
-                    highp vec4 specularTerm = specular * lightColor * pow(max(dot(normal, halfAngle), 0.0), shininess);
+                    highp vec4 specularTerm = specular * lightColor * pow(max(dot(normal, halfAngle), 0.0), specular_exponent);
                     gl_FragColor = diffuseTerm + specularTerm + ambient;
                 } else {
                     gl_FragColor = ambient;
