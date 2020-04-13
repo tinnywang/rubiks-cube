@@ -1,10 +1,10 @@
-const EYE = [0, 0, -20];
+const EYE = [0, 0, 20];
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const DEGREES = 5;
 const MARGIN_OF_ERROR = 1e-3;
-const FOV = glMatrix.glMatrix.toRadian(-70);
+const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
 const STICKER_DEPTH = 0.96;
@@ -143,7 +143,6 @@ function RubiksCube(data) {
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
         glMatrix.mat4.copy(modelViewMatrix, VIEW_MATRIX);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
-
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
                 for (let b = 0; b < 3; b++) {
@@ -399,9 +398,13 @@ function Cube(rubiksCube, coordinates, data) {
         let offset = 0;
         for (let faceGroup of this.data.faces) {
             let material = faceGroup.material;
-            gl.uniform4fv(shaderProgram.ambient, rgbToVec4(material.ambient));
-            gl.uniform4fv(shaderProgram.diffuse, rgbToVec4(material.diffuse));
-            gl.uniform4fv(shaderProgram.specular, rgbToVec4(material.specular));
+            // Blender doesn't seem to support per-object ambient colors or export the global ambient color,
+            // so we compute our own ambient color as a darker version of the diffuse color.
+            let ambient = glMatrix.vec3.create();
+            glMatrix.vec3.scale(ambient, material.diffuse, 0.4);
+            gl.uniform3fv(shaderProgram.ambient, ambient);
+            gl.uniform3fv(shaderProgram.diffuse, material.diffuse);
+            gl.uniform3fv(shaderProgram.specular, material.specular);
             gl.uniform1f(shaderProgram.specularExponent, material.specular_exponent);
             // vertices
             gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
@@ -422,10 +425,10 @@ function Cube(rubiksCube, coordinates, data) {
 
         /*
         let material = data.faces[0].material;
-        gl.uniform4fv(shaderProgram.ambient, rgbToVec4(material.ambient));
-        gl.uniform4fv(shaderProgram.diffuse, rgbToVec4(material.diffuse));
-        gl.uniform4fv(shaderProgram.specular, rgbToVec4(material.specular));
-        gl.uniform1f(shaderProgram.specularExponent, material.specular_exponent);
+        gl.uniform3fv(shaderProgram.ambient, material.ambient);
+        gl.uniform3fv(shaderProgram.diffuse, material.diffuse);
+        gl.uniform3fv(shaderProgram.specular, material.specular);
+        gl.uniform3f(shaderProgram.specularExponent, material.specular_exponent);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
@@ -485,10 +488,10 @@ function Sticker(cube, color, normal, transform) {
         }
         setMatrixUniforms();
 
-        gl.uniform4fv(shaderProgram.ambient, color);
-        gl.uniform4fv(shaderProgram.diffuse, stickerModel.diffuse);
-        gl.uniform4fv(shaderProgram.specular, stickerModel.specular);
-        gl.uniform1f(shaderProgram.specularExponent, stickerModel.specular_exponent);
+        gl.uniform3fv(shaderProgram.ambient, color);
+        gl.uniform3fv(shaderProgram.diffuse, stickerModel.diffuse);
+        gl.uniform3fv(shaderProgram.specular, stickerModel.specular);
+        gl.uniform3f(shaderProgram.specularExponent, stickerModel.specular_exponent);
         // vertices
         gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerVerticesBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
@@ -518,10 +521,6 @@ function initWebGL(canvas) {
         return null;
     }
     return gl;
-}
-
-function rgbToVec4(rgb) {
-    return glMatrix.vec4.fromValues(rgb[0], rgb[1], rgb[2], 1);
 }
 
 function getShader(gl, id) {
@@ -631,7 +630,7 @@ function rotate(event) {
         yNewRight = event.pageY;
         let delta_x = (xNewRight - xInitRight) / 50;
         let delta_y = (yNewRight - yInitRight) / 50;
-        let axis = [delta_y, -delta_x, 0];
+        let axis = [delta_y, delta_x, 0];
         let degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
         let newRotationMatrix = glMatrix.mat4.create();
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
@@ -708,7 +707,7 @@ function backView() {
 function perspectiveView() {
     glMatrix.mat4.identity(rotationMatrix);
     glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-45));
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
 }
 
 function togglePerspective(event) {

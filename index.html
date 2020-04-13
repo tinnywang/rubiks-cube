@@ -18,26 +18,25 @@
 
             uniform bool lighting;
             uniform highp vec3 eyePosition;
-            uniform highp vec4 ambient;
-            uniform highp vec4 diffuse;
-            uniform highp vec4 specular;
-            uniform highp float specular_exponent;
+            uniform highp vec3 ambient;
+            uniform highp vec3 diffuse;
+            uniform highp vec3 specular;
+            uniform highp float specularExponent;
 
-            const highp vec4 lightPosition = vec4(0, -3, -6, 1); // point light
-            const highp vec4 lightColor = vec4(1, 1, 1, 1);
+            const highp vec3 lightPosition = vec3(0, 5, 10);
+            const highp vec3 lightColor = vec3(1, 1, 1);
 
             void main(void) {
                 if (lighting) {
                     highp vec3 position = position.xyz / position.w;
                     highp vec3 eyeDirection = normalize(eyePosition - position);
-                    highp vec3 lightPosition = lightPosition.xyz / lightPosition.w;
                     highp vec3 lightDirection = normalize(lightPosition - position);
-                    highp vec3 halfAngle = normalize(lightDirection + eyeDirection);
-                    highp vec4 diffuseTerm = diffuse * lightColor * max(dot(normal, lightDirection), 0.0);
-                    highp vec4 specularTerm = specular * lightColor * pow(max(dot(normal, halfAngle), 0.0), specular_exponent);
-                    gl_FragColor = diffuseTerm + specularTerm + ambient;
+                    highp vec3 diffuseTerm = diffuse * lightColor * max(dot(lightDirection, normal), 0.0);
+                    highp vec3 reflection = normalize(reflect(-lightDirection, normal));
+                    highp vec3 specularTerm = specular * lightColor * pow(max(dot(reflection, eyeDirection), 0.0), specularExponent);
+                    gl_FragColor = vec4(diffuseTerm + specularTerm + ambient, 1.0);
                 } else {
-                    gl_FragColor = ambient;
+                    gl_FragColor = vec4(diffuse, 1.0);
                 }
             }
         </script>
