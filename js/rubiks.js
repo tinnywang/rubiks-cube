@@ -1,6 +1,16 @@
 const EYE = [0, 0, 20];
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
+const LIGHTS = [
+    {
+        position: [35, 20, 10],
+        intensity: 1,
+    },
+    {
+        position: [0, -10, 0],
+        intensity: 1,
+    },
+];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const DEGREES = 5;
 const MARGIN_OF_ERROR = 1e-3;
@@ -564,12 +574,25 @@ function initShaders() {
         console.log('Unable to initialize the shader program');
     }
     gl.useProgram(shaderProgram);
+
     shaderProgram.vertexPosition = gl.getAttribLocation(shaderProgram, 'vertexPosition');
     gl.enableVertexAttribArray(shaderProgram.vertexPosition);
+
     shaderProgram.vertexNormal = gl.getAttribLocation(shaderProgram, 'vertexNormal');
     gl.enableVertexAttribArray(shaderProgram.vertexNormal);
-    shaderProgram.eyePosition = gl.getUniformLocation(shaderProgram, 'eyePosition');
-    gl.uniform3fv(shaderProgram.eyePosition, EYE);
+
+    shaderProgram.eye = gl.getUniformLocation(shaderProgram, 'eye');
+    gl.uniform3fv(shaderProgram.eye, EYE);
+
+    for (let i = 0; i < LIGHTS.length; i++) {
+        const lightPosition = `lights[${i}].position`;
+        const lightIntensity = `lights[${i}].intensity`;
+        shaderProgram[lightPosition] = gl.getUniformLocation(shaderProgram, lightPosition);
+        shaderProgram[lightIntensity] = gl.getUniformLocation(shaderProgram, lightIntensity);
+        gl.uniform3fv(shaderProgram[lightPosition], LIGHTS[i].position);
+        gl.uniform1f(shaderProgram[lightIntensity], LIGHTS[i].intensity);
+    }
+
     shaderProgram.lighting = gl.getUniformLocation(shaderProgram, 'lighting');
     shaderProgram.ambient = gl.getUniformLocation(shaderProgram, 'ambient');
     shaderProgram.diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
