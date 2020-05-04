@@ -17,8 +17,6 @@ const MARGIN_OF_ERROR = 1e-3;
 const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
-const STICKER_DEPTH = 0.96;
-const STICKER_SCALE = 0.85; // a sticker covers 85% of a cube's face
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 
@@ -53,19 +51,10 @@ function RubiksCube(data) {
     this.cubeVerticesBuffer = null;
     this.cubeNormalsBuffer = null;
     this.cubeFacesBuffer = null;
-    this.stickerVerticesBuffer = null;
-    this.stickerNormalsBuffer = null;
-    this.stickerFacesBuffer = null;
-    this.pickingFramebuffer = null;
-    this.pickingTexture = null;
-    this.pickingRenderBuffer = null;
     this.cubes = new Array(3);
-    this.stickers = new Map(); // Map from rgba picking color to sticker.
 
     this.init = function() {
-        this.initTextureFramebuffer();
         this.initCubeBuffers();
-        //this.initStickerBuffers();
 
         for (let r = 0; r < 3; r++) {
             this.cubes[r] = new Array(3);
@@ -73,73 +62,30 @@ function RubiksCube(data) {
                 this.cubes[r][g] = new Array(3);
                 for (let b = 0; b < 3; b++) {
                     let coordinates = [r - 1, g - 1, b - 1];
-                    let cube = new Cube(this, coordinates, data[0]);
+                    let cube = new Cube(this, coordinates, data);
                     this.cubes[r][g][b] = cube;
-
-                    for (let sticker of cube.stickers) {
-                        // Transform rgba values from floats in [0, 1] to ints in [0, 255].
-                        let color = glMatrix.vec4.clone(sticker.pickingColor);
-                        glMatrix.vec4.scale(color, color, 255);
-                        this.stickers.set(color.toString(), sticker);
-                    }
                 }
             }
         }
-    }
-
-    this.initTextureFramebuffer = function() {
-        this.pickingFramebuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-
-        this.pickingTexture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.pickingTexture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-
-        this.pickingRenderBuffer = gl.createRenderbuffer();
-        gl.bindRenderbuffer(gl.RENDERBUFFER, this.pickingRenderBuffer);
-        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, canvas.width, canvas.height);
-
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.pickingTexture, 0);
-        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.pickingRenderBuffer);
     }
 
     this.initCubeBuffers = function() {
         // vertices
         this.cubeVerticesBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeVerticesBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data[0].vertices), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.vertices), gl.STATIC_DRAW);
         // normals
         this.cubeNormalsBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalsBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data[0].normals), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.normals), gl.STATIC_DRAW);
         // faces
-       let buffer = new Array();
-       for (let faceGroup of data[0].faces) {
+        let buffer = new Array();
+        for (let faceGroup of data.faces) {
            buffer.push(...faceGroup.vertex_indices);
-       }
-       this.cubeFacesBuffer = gl.createBuffer();
-       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
-       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(buffer), gl.STATIC_DRAW);
-    }
-
-    this.initStickerBuffers = function() {
-        // vertices
-        this.stickerVerticesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.stickerVerticesBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.vertices), gl.STATIC_DRAW);
-        // normals
-        this.stickerNormalsBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.stickerNormalsBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(stickerModel.normals), gl.STATIC_DRAW);
-        // faces
-        this.stickerFacesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.stickerFacesBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(stickerModel.faces), gl.STATIC_DRAW);
+        }
+        this.cubeFacesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(buffer), gl.STATIC_DRAW);
     }
 
     this.init();
@@ -158,39 +104,9 @@ function RubiksCube(data) {
                 for (let b = 0; b < 3; b++) {
                     let cube = this.cubes[r][g][b];
                     cube.draw();
-                    /*
-                    for (let sticker of cube.stickers) {
-                        sticker.draw(sticker.color, STICKER_SCALE);
-                    }
-                    */
                 }
             }
         }
-    }
-
-    this.drawToPickingFramebuffer = function() {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, rubiksCube.pickingFramebuffer);
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.uniform1i(shaderProgram.lighting, 0);
-
-        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
-        glMatrix.mat4.copy(modelViewMatrix, VIEW_MATRIX);
-        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
-
-        for (let r = 0; r < 3; r++) {
-            for (let g = 0; g < 3; g++) {
-                for (let b = 0; b < 3; b++) {
-                    let cube = this.cubes[r][g][b];
-                    for (let sticker of cube.stickers) {
-                        sticker.draw(sticker.pickingColor);
-                    }
-                }
-            }
-        }
-
-        gl.uniform1i(shaderProgram.lighting, 1);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
     /*
@@ -266,11 +182,7 @@ function RubiksCube(data) {
     }
 
     this.select = function(x, y) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
-        let pixelValues = new Uint8Array(4);
-        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixelValues);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        return this.stickers.get(pixelValues.toString());
+        return null;
     }
 
     this.setRotationAxis = function(initSticker, newSticker) {
@@ -330,66 +242,9 @@ function Cube(rubiksCube, coordinates, data) {
     this.data = data;
     this.rotationMatrix = glMatrix.mat4.create();
     this.translationVector = glMatrix.vec3.create();
-    this.stickers = [];
-    this.COLORS = {
-        'blue': [0.0, 0.0, 1.0, 1.0],
-        'green': [0.0, 1.0, 0.0, 1.0],
-        'orange': [1.0, 0.5, 0.0, 1.0],
-        'red': [1.0, 0.0, 0.0, 1.0],
-        'white': [1.0, 1.0, 1.0, 1.0],
-        'yellow': [1.0, 1.0, 0.0, 1.0]
-    }
 
     this.init = function() {
         glMatrix.vec3.scale(this.translationVector, this.coordinates, 2);
-        this.initStickers();
-    }
-
-    this.initStickers = function() {
-        let x = this.coordinates[0];
-        let y = this.coordinates[1];
-        let z = this.coordinates[2];
-        /*
-        if (x == -1) {
-            this.stickers.push(new Sticker(this, this.COLORS['red'], [-1, 0, 0], function() {
-                this.cube.transform();
-                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [-STICKER_DEPTH, 0, 0]);
-                glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, glMatrix.glMatrix.toRadian(90));
-            }));
-        } else if (x == 1) {
-            this.stickers.push(new Sticker(this, this.COLORS['orange'], [1, 0, 0], function() {
-                this.cube.transform();
-                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [STICKER_DEPTH, 0, 0]);
-                glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, glMatrix.glMatrix.toRadian(-90));
-            }));
-        }
-        if (y == -1) {
-            this.stickers.push(new Sticker(this, this.COLORS['yellow'], [0, -1, 0], function() {
-                this.cube.transform();
-                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, -STICKER_DEPTH, 0]);
-                glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, glMatrix.glMatrix.toRadian(-180));
-            }));
-        } else if (y == 1) {
-            this.stickers.push(new Sticker(this, this.COLORS['white'], [0, 1, 0], function() {
-                this.cube.transform();
-                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, STICKER_DEPTH, 0]);
-                setMatrixUniforms();
-            }));
-        }
-        if (z == 1) {
-            this.stickers.push(new Sticker(this, this.COLORS['green'], [0, 0, 1], function() {
-                this.cube.transform();
-                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, STICKER_DEPTH]);
-                glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, glMatrix.glMatrix.toRadian(90));
-            }));
-        } else if (z == -1) {
-            this.stickers.push(new Sticker(this, this.COLORS['blue'], [0, 0, -1], function() {
-                this.cube.transform();
-                glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, [0, 0, -STICKER_DEPTH]);
-                glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, glMatrix.glMatrix.toRadian(-90));
-            }));
-        }
-        */
     }
 
     this.init();
@@ -426,96 +281,13 @@ function Cube(rubiksCube, coordinates, data) {
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
             gl.drawElements(gl.TRIANGLES, faceGroup.vertex_indices.length, gl.UNSIGNED_SHORT, offset);
 
-            glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
-
             // Offset must be a multiple of the size of the array buffer's type,
             // and an unsigned short is 2 bytes.
             offset += faceGroup.vertex_indices.length * 2;
         }
 
-        /*
-        let material = data.faces[0].material;
-        gl.uniform3fv(shaderProgram.ambient, material.ambient);
-        gl.uniform3fv(shaderProgram.diffuse, material.diffuse);
-        gl.uniform3fv(shaderProgram.specular, material.specular);
-        gl.uniform3f(shaderProgram.specularExponent, material.specular_exponent);
-        // vertices
-        gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-        // normals
-        gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeNormalsBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
-        // faces
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
-        gl.drawElements(gl.TRIANGLES, data.faces[0].vertex_indices.length, gl.UNSIGNED_SHORT, 0);
-
-        glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
-        
-        for (let sticker of this.stickers) {
-            sticker.draw(sticker.color, STICKER_SCALE);
-        }
-        */
-    }
-}
-
-function Sticker(cube, color, normal, transform) {
-    this.cube = cube;
-    this.color = color;
-    this.normal = normal;
-    this.transform = transform;
-    this.pickingColor = null;
-
-    this.init = function() {
-        let mask = 0xFF;
-        let hash = this.hashCode();
-        let color = [hash & mask, (hash >> 8) & mask, (hash >> 16) & mask];
-        color = [color[0]/mask, color[1]/mask, color[2]/mask, 1];
-        this.pickingColor = color;
-    }
-
-    // https://stackoverflow.com/a/7616484
-    this.hashCode = function() {
-        let hash = 0;
-        let s = this.cube.coordinates + ':' + this.color + ':' + this.normal;
-
-        for (let i = 0; i < s.length; i++) {
-            hash = ((hash << 5) - hash) + s.charCodeAt(i);
-            hash |= 0;
-        }
-        return hash;
-    }
-
-    this.draw = function(color, scale) {
-        let mvMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.copy(mvMatrix, modelViewMatrix)
-        this.transform();
-        if (scale) {
-          glMatrix.mat4.scale(
-            modelViewMatrix,
-            modelViewMatrix,
-            glMatrix.vec3.fromValues(scale, scale, scale)
-          );
-        }
-        setMatrixUniforms();
-
-        gl.uniform3fv(shaderProgram.ambient, color);
-        gl.uniform3fv(shaderProgram.diffuse, stickerModel.diffuse);
-        gl.uniform3fv(shaderProgram.specular, stickerModel.specular);
-        gl.uniform3f(shaderProgram.specularExponent, stickerModel.specular_exponent);
-        // vertices
-        gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerVerticesBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-        // normals
-        gl.bindBuffer(gl.ARRAY_BUFFER, cube.rubiksCube.stickerNormalsBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
-        // faces
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cube.rubiksCube.stickerFacesBuffer);
-        gl.drawElements(gl.TRIANGLES, stickerModel.faces.length, gl.UNSIGNED_SHORT, 0);
-
         glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
     }
-
-    this.init();
 }
 
 function initWebGL(canvas) {
@@ -605,7 +377,6 @@ function drawScene() {
         rubiksCube.rotateLayer();
     }
 
-    //rubiksCube.drawToPickingFramebuffer();
     rubiksCube.draw();
 
     requestAnimationFrame(drawScene);
@@ -769,7 +540,7 @@ function scramble() {
 
 $(document).ready(function() {
     $.get('/models/rubiks-cube.json', function(data) {
-        start(data);
+        start(data[0]);
         $('#glcanvas').bind('contextmenu', function(e) { return false; });
         $('#glcanvas').mousedown(startRotate);
         $('#glcanvas').mousemove(rotate);
