@@ -93,12 +93,10 @@ function RubiksCube(data) {
     this.draw = function() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.uniform1i(shaderProgram.lighting, 1);
 
         glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
-        glMatrix.mat4.copy(modelViewMatrix, VIEW_MATRIX);
-        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, rotationMatrix);
+        glMatrix.mat4.multiply(modelViewMatrix, VIEW_MATRIX, rotationMatrix);
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
                 for (let b = 0; b < 3; b++) {
@@ -378,7 +376,6 @@ function drawScene() {
     }
 
     rubiksCube.draw();
-
     requestAnimationFrame(drawScene);
 }
 
@@ -387,17 +384,17 @@ function start(data) {
     canvasXOffset = $('#glcanvas').offset()['left'];
     canvasYOffset = $('#glcanvas').offset()['top'];
     gl = initWebGL(canvas);
-    initShaders();
-    rubiksCube = new RubiksCube(data);
-    perspectiveView();
-
     if (gl) {
+        initShaders();
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        rubiksCube = new RubiksCube(data);
+        perspectiveView();
         drawScene();
     }
 }
@@ -416,6 +413,73 @@ function setMatrixUniforms() {
     glMatrix.mat3.fromMat4(normalMatrix3, normalMatrix);
     let normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
+}
+
+function onClick(event) {
+    const x = event.pageX - canvasXOffset;
+    const y = event.pageY - canvasYOffset;
+
+    const worldNear = unproject(x, y, 0);
+    const worldFar = unproject(x, y, 1);
+    const intersectionPoint = intersection(worldNear, worldFar);
+    console.log(`intersection: ${intersectionPoint}`);
+}
+
+function screenToClipCoordinates(x, y, z) {
+    const clipX = 2 * x / canvas.width - 1;
+    const clipY = 1 - 2 * y / canvas.height;
+    const clipZ = 2 * z - 1;
+    return glMatrix.vec4.fromValues(clipX, clipY, clipZ, 1);
+}
+
+function unproject(x, y, z) {
+    const unprojectMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.multiply(unprojectMatrix, projectionMatrix, modelViewMatrix);
+    glMatrix.mat4.invert(unprojectMatrix, unprojectMatrix);
+    const clip = screenToClipCoordinates(x, y, z);
+    let world = glMatrix.vec4.create();
+    glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
+
+    return glMatrix.vec3.fromValues(
+        world[0] / world[3],
+        world[1] / world[3],
+        world[2] / world[3],
+    );
+}
+
+// For now, test if the ray (start, end) intersects with the plane defined by the points (-3, -3, 3), (-3, 3, 3), (3, -3, 3).
+function intersection(start, end) {
+    const p0 = glMatrix.vec3.fromValues(-3, -3, 3);
+    const p1 = glMatrix.vec3.fromValues(-3, 3, 3);
+    const p2 = glMatrix.vec3.fromValues(3, -3, 3);
+    const p01 = glMatrix.vec3.subtract(glMatrix.vec3.create(), p1, p0);
+    const p02 = glMatrix.vec3.subtract(glMatrix.vec3.create(), p2, p0);
+    const normal = glMatrix.vec3.cross(glMatrix.vec3.create(), p01, p02);
+    const p0Start = glMatrix.vec3.subtract(glMatrix.vec3.create(), start, p0);
+    const ray = glMatrix.vec3.subtract(glMatrix.vec3.create(), start, end);
+
+    if (glMatrix.vec3.dot(ray, normal) === 0) {
+        return;
+    }
+
+    const denominator = glMatrix.vec3.dot(ray, normal);
+    const t = glMatrix.vec3.dot(normal, p0Start) / denominator;
+    const u = glMatrix.vec3.dot(
+       glMatrix.vec3.cross(glMatrix.vec3.create(), p02, ray),
+       p0Start,
+    ) / denominator;
+    const v = glMatrix.vec3.dot(
+       glMatrix.vec3.cross(glMatrix.vec3.create(), ray, p01),
+       p0Start,
+    ) / denominator;
+
+    if (0 <= u && u <= 1 && 0 <= v && v <= 1) {
+        const point = glMatrix.vec3.create();
+        glMatrix.vec3.scale(point, ray, -t);
+        glMatrix.vec3.add(point, point, start);
+        return point;
+    }
+    return null;
 }
 
 function rotate(event) {
@@ -546,6 +610,7 @@ $(document).ready(function() {
         $('#glcanvas').mousemove(rotate);
         $('#glcanvas').mouseup(endRotate);
         $('#glcanvas').mouseout(endRotate);
+        $('#glcanvas').click(onClick);
         $('body').keypress(togglePerspective);
         $(window).resize(function() {
             canvasXOffset = $('#glcanvas').offset()['left'];
