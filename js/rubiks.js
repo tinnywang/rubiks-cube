@@ -52,6 +52,7 @@ function RubiksCube(data) {
     this.cubeNormalsBuffer = null;
     this.cubeFacesBuffer = null;
     this.cubes = new Array(3);
+    this.boundingBox = new BoundingBox(EYE);
 
     this.init = function() {
         this.initCubeBuffers();
@@ -421,7 +422,7 @@ function onClick(event) {
 
     const worldNear = unproject(x, y, 0);
     const worldFar = unproject(x, y, 1);
-    const intersectionPoint = intersection(worldNear, worldFar);
+    const intersectionPoint = rubiksCube.boundingBox.intersection(worldNear, worldFar, modelViewMatrix);
     console.log(`intersection: ${intersectionPoint}`);
 }
 
@@ -439,47 +440,8 @@ function unproject(x, y, z) {
     const clip = screenToClipCoordinates(x, y, z);
     let world = glMatrix.vec4.create();
     glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
-
-    return glMatrix.vec3.fromValues(
-        world[0] / world[3],
-        world[1] / world[3],
-        world[2] / world[3],
-    );
-}
-
-// For now, test if the ray (start, end) intersects with the plane defined by the points (-3, -3, 3), (-3, 3, 3), (3, -3, 3).
-function intersection(start, end) {
-    const p0 = glMatrix.vec3.fromValues(-3, -3, 3);
-    const p1 = glMatrix.vec3.fromValues(-3, 3, 3);
-    const p2 = glMatrix.vec3.fromValues(3, -3, 3);
-    const p01 = glMatrix.vec3.subtract(glMatrix.vec3.create(), p1, p0);
-    const p02 = glMatrix.vec3.subtract(glMatrix.vec3.create(), p2, p0);
-    const normal = glMatrix.vec3.cross(glMatrix.vec3.create(), p01, p02);
-    const p0Start = glMatrix.vec3.subtract(glMatrix.vec3.create(), start, p0);
-    const ray = glMatrix.vec3.subtract(glMatrix.vec3.create(), start, end);
-
-    if (glMatrix.vec3.dot(ray, normal) === 0) {
-        return;
-    }
-
-    const denominator = glMatrix.vec3.dot(ray, normal);
-    const t = glMatrix.vec3.dot(normal, p0Start) / denominator;
-    const u = glMatrix.vec3.dot(
-       glMatrix.vec3.cross(glMatrix.vec3.create(), p02, ray),
-       p0Start,
-    ) / denominator;
-    const v = glMatrix.vec3.dot(
-       glMatrix.vec3.cross(glMatrix.vec3.create(), ray, p01),
-       p0Start,
-    ) / denominator;
-
-    if (0 <= u && u <= 1 && 0 <= v && v <= 1) {
-        const point = glMatrix.vec3.create();
-        glMatrix.vec3.scale(point, ray, -t);
-        glMatrix.vec3.add(point, point, start);
-        return point;
-    }
-    return null;
+    glMatrix.vec4.scale(world, world, 1 / world[3]);
+    return glMatrix.vec3.fromValues(...world);
 }
 
 function rotate(event) {
