@@ -1,6 +1,8 @@
 const Z_INDEX = 2;
 
-function BoundingBox(eye) {
+function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
+    this.projectionMatrix = projectionMatrix;
+    this.modelViewMatrix = modelViewMatrix;
     this.eye = eye;
     this.planes = [
         new Plane([-3, -3, 3], [-3, 3, 3], [3, -3, 3]), // front
@@ -11,7 +13,10 @@ function BoundingBox(eye) {
         new Plane([3, -3, -3], [3, 3, -3], [3, -3, 3]), // right
     ];
 
-    this.intersection = function(start, end, modelViewMatrix) {
+    this.intersection = function(x, y) {
+        const start = this.unproject(x, y, 0);
+        const end = this.unproject(x, y, 1);
+
         let intersectionPoint = null;
         let minDistance = Infinity;
 
@@ -40,7 +45,7 @@ function BoundingBox(eye) {
                 const worldPoint = glMatrix.vec4.transformMat4(
                     glMatrix.vec4.create(),
                     glMatrix.vec4.fromValues(...point, 1),
-                    modelViewMatrix
+                    this.modelViewMatrix
                 );
 
                 // The (start, end) ray may intersect with multiple planes,
@@ -56,6 +61,24 @@ function BoundingBox(eye) {
             }
         }
         return intersectionPoint;
+    }
+
+    function screenToClipCoordinates(x, y, z) {
+        const clipX = 2 * x / canvas.width - 1;
+        const clipY = 1 - 2 * y / canvas.height;
+        const clipZ = 2 * z - 1;
+        return glMatrix.vec4.fromValues(clipX, clipY, clipZ, 1);
+    }
+
+    this.unproject = function(x, y, z) {
+        const unprojectMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.multiply(unprojectMatrix, this.projectionMatrix, this.modelViewMatrix);
+        glMatrix.mat4.invert(unprojectMatrix, unprojectMatrix);
+        const clip = screenToClipCoordinates(x, y, z);
+        let world = glMatrix.vec4.create();
+        glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
+        glMatrix.vec4.scale(world, world, 1 / world[3]);
+        return glMatrix.vec3.fromValues(...world);
     }
 }
 

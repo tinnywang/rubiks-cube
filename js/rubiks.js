@@ -52,7 +52,7 @@ function RubiksCube(data) {
     this.cubeNormalsBuffer = null;
     this.cubeFacesBuffer = null;
     this.cubes = new Array(3);
-    this.boundingBox = new BoundingBox(EYE);
+    this.boundingBox = new BoundingBox(projectionMatrix, modelViewMatrix, EYE);
 
     this.init = function() {
         this.initCubeBuffers();
@@ -420,28 +420,8 @@ function onClick(event) {
     const x = event.pageX - canvasXOffset;
     const y = event.pageY - canvasYOffset;
 
-    const worldNear = unproject(x, y, 0);
-    const worldFar = unproject(x, y, 1);
-    const intersectionPoint = rubiksCube.boundingBox.intersection(worldNear, worldFar, modelViewMatrix);
+    const intersectionPoint = rubiksCube.boundingBox.intersection(x, y);
     console.log(`intersection: ${intersectionPoint}`);
-}
-
-function screenToClipCoordinates(x, y, z) {
-    const clipX = 2 * x / canvas.width - 1;
-    const clipY = 1 - 2 * y / canvas.height;
-    const clipZ = 2 * z - 1;
-    return glMatrix.vec4.fromValues(clipX, clipY, clipZ, 1);
-}
-
-function unproject(x, y, z) {
-    const unprojectMatrix = glMatrix.mat4.create();
-    glMatrix.mat4.multiply(unprojectMatrix, projectionMatrix, modelViewMatrix);
-    glMatrix.mat4.invert(unprojectMatrix, unprojectMatrix);
-    const clip = screenToClipCoordinates(x, y, z);
-    let world = glMatrix.vec4.create();
-    glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
-    glMatrix.vec4.scale(world, world, 1 / world[3]);
-    return glMatrix.vec3.fromValues(...world);
 }
 
 function rotate(event) {
