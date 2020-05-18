@@ -5,11 +5,11 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
     this.modelViewMatrix = modelViewMatrix;
     this.eye = eye;
     this.planes = [
-        new Plane([-3, -3, 3], [-3, 3, 3], [3, -3, 3]), // front
+        new Plane([-3, -3, 3], [3, -3, 3], [-3, 3, 3]), // front
         new Plane([-3, -3, -3], [-3, 3, -3], [3, -3, -3]), // back
-        new Plane([-3, 3, 3], [-3, 3, -3], [3, 3, 3]), // top
+        new Plane([-3, 3, 3], [3, 3, 3], [-3, 3, -3]), // top
         new Plane([-3, -3, 3], [-3, -3, -3], [3, -3, 3]), // bottom
-        new Plane([-3, -3, -3], [-3, 3, -3], [-3, -3, 3]), // left
+        new Plane([-3, -3, -3], [-3, -3, 3], [-3, 3, -3]), // left
         new Plane([3, -3, -3], [3, 3, -3], [3, -3, 3]), // right
     ];
 
@@ -17,7 +17,7 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
         const start = this.unproject(x, y, 0);
         const end = this.unproject(x, y, 1);
 
-        let intersectionPoint = null;
+        let intersection = null;
         let minDistance = Infinity;
 
         for (let plane of this.planes) {
@@ -57,10 +57,14 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
                 if (distance < minDistance) {
                     minDistance = distance;
                     intersectionPoint = point;
+                    intersection = {
+                        point: point,
+                        normal: glMatrix.vec3.normalize(glMatrix.vec3.create(), plane.normal),
+                    }
                 }
             }
         }
-        return intersectionPoint;
+        return intersection;
     }
 
     function screenToClipCoordinates(x, y, z) {

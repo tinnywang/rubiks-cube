@@ -420,8 +420,9 @@ function onClick(event) {
     const x = event.pageX - canvasXOffset;
     const y = event.pageY - canvasYOffset;
 
-    const intersectionPoint = rubiksCube.boundingBox.intersection(x, y);
-    console.log(`intersection: ${intersectionPoint}`);
+    const intersection = rubiksCube.boundingBox.intersection(x, y);
+    console.log(`intersection: ${intersection.point}`);
+    console.log(`normal: ${intersection.normal}`);
 }
 
 function rotate(event) {
