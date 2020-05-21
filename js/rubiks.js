@@ -13,7 +13,6 @@ const LIGHTS = [
 ];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const DEGREES = 5;
-const MARGIN_OF_ERROR = 1e-3;
 const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
@@ -33,8 +32,8 @@ var yInitRight;
 var xNewRight;
 var yNewRight;
 var leftMouseDown = false;
-var initSticker;
-var newSticker;
+var initIntersection;
+var newIntersection;
 var isRotating = false;
 var isScrambling = false;
 
@@ -62,7 +61,8 @@ function RubiksCube(data) {
             for (let g = 0; g < 3; g++) {
                 this.cubes[r][g] = new Array(3);
                 for (let b = 0; b < 3; b++) {
-                    let coordinates = [r - 1, g - 1, b - 1];
+                    // Each cube has dimensions 2x2x2 units.
+                    let coordinates = glMatrix.vec3.fromValues(2 * (r - 1), 2 * (g - 1), 2 * (b - 1));
                     let cube = new Cube(this, coordinates, data);
                     this.cubes[r][g][b] = cube;
                 }
@@ -111,8 +111,8 @@ function RubiksCube(data) {
     /*
      * Sets this.rotatedCubes to an array of cubes that are in the same plane as initCube, newCube, and axis.
      */
-    this.setRotatedCubes = function(initSticker, newSticker, axis) {
-        if (!initSticker || !newSticker || !axis) {
+    this.setRotatedCubes = function(initIntersection, newIntersection, axis) {
+        if (!initIntersection || !newIntersection || !axis) {
             return;
         }
         this.rotatedCubes = null;
@@ -127,18 +127,14 @@ function RubiksCube(data) {
             }
         }
 
-        let initCoordinate = initSticker.cube.coordinates[i];
-        let newCoordinate = newSticker.cube.coordinates[i];
-        if (Math.abs(newCoordinate - initCoordinate) > MARGIN_OF_ERROR) {
-            return;
-        }
-
+        let initCoordinate = initIntersection.point[i];
+        let newCoordinate = newIntersection.point[i];
         let cubes = [];
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
                 for (let b = 0; b < 3; b++) {
-                    let c = this.cubes[r][g][b];
-                    if (Math.abs(c.coordinates[i] - initCoordinate) < MARGIN_OF_ERROR) {
+                    const c = this.cubes[r][g][b];
+                    if (inRange(initCoordinate, newCoordinate, c.coordinates[i])) {
                         cubes.push(c);
                     }
                 }
@@ -148,6 +144,12 @@ function RubiksCube(data) {
         if (cubes.length == 9) {
             this.rotatedCubes = cubes;
         }
+    }
+
+    function inRange(r1, r2, value) {
+        const min = r1 < r2 ? r1 : r2;
+        const max = r1 < r2 ? r2 : r1;
+        return Math.floor(min) <= value && value <= Math.ceil(max);
     }
 
     /*
@@ -170,36 +172,28 @@ function RubiksCube(data) {
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(DEGREES), this.rotationAxis);
 
         for (let cube of this.rotatedCubes) {
-            glMatrix.vec3.transformMat4(cube.coordinates, cube.coordinates, newRotationMatrix);
-            glMatrix.mat4.multiply(cube.rotationMatrix, newRotationMatrix, cube.rotationMatrix);
-
-            for (let sticker of cube.stickers) {
-                glMatrix.vec3.transformMat4(sticker.normal, sticker.normal, newRotationMatrix);
-                glMatrix.vec3.normalize(sticker.normal, sticker.normal)
-            }
-        }
+            cube.rotate(newRotationMatrix);
+       }
     }
 
     this.select = function(x, y) {
-        return null;
+        return rubiksCube.boundingBox.intersection(event.pageX - canvasXOffset, event.pageY - canvasYOffset);
     }
 
-    this.setRotationAxis = function(initSticker, newSticker) {
-        if (!initSticker || !newSticker) {
+    this.setRotationAxis = function(initIntersection, newIntersection) {
+        if (!initIntersection || !newIntersection) {
             return;
         }
 
         let axis = glMatrix.vec3.create();
-        let initCoordinates = initSticker.cube.coordinates;
-        let newCoordinates = newSticker.cube.coordinates;
 
         // The selected stickers are on the same face of the Rubik's cube.
-        if (glMatrix.vec3.equals(initSticker.normal, newSticker.normal)) {
+        if (glMatrix.vec3.equals(initIntersection.normal, newIntersection.normal)) {
             let direction = glMatrix.vec3.create();
-            glMatrix.vec3.subtract(direction, newCoordinates, initCoordinates);
-            glMatrix.vec3.cross(axis, initSticker.normal, direction);
+            glMatrix.vec3.subtract(direction, newIntersection.point, initIntersection.point);
+            glMatrix.vec3.cross(axis, initIntersection.normal, direction);
         } else {
-            glMatrix.vec3.cross(axis, initSticker.normal, newSticker.normal);
+            glMatrix.vec3.cross(axis, initIntersection.normal, newIntersection.normal);
         }
 
         glMatrix.vec3.normalize(axis, axis);
@@ -215,10 +209,10 @@ function RubiksCube(data) {
         } else {
             let cube = this.randomCube();
             let i = Math.floor(Math.random() * 3);
-            let initSticker = cube.stickers[i];
-            let newSticker = cube.stickers[(i + 1) % 2];
-            this.setRotationAxis(initSticker, newSticker);
-            this.setRotatedCubes(initSticker, newSticker, this.rotationAxis);
+            let initIntersection = cube.stickers[i];
+            let newIntersection = cube.stickers[(i + 1) % 2];
+            this.setRotationAxis(initIntersection, newIntersection);
+            this.setRotatedCubes(initIntersection, newIntersection, this.rotationAxis);
             isRotating = true;
             this.scrambleCycles--;
         }
@@ -237,20 +231,20 @@ function RubiksCube(data) {
 
 function Cube(rubiksCube, coordinates, data) {
     this.rubiksCube = rubiksCube;
-    this.coordinates = coordinates;
     this.data = data;
     this.rotationMatrix = glMatrix.mat4.create();
-    this.translationVector = glMatrix.vec3.create();
+    this.coordinates = coordinates;
 
-    this.init = function() {
-        glMatrix.vec3.scale(this.translationVector, this.coordinates, 2);
-    }
+    this.rotate = function(newRotationMatrix) {
+        glMatrix.vec3.transformMat4(this.coordinates, this.coordinates, newRotationMatrix);
+        glMatrix.vec3.round(this.coordinates, this.coordinates);
 
-    this.init();
+        glMatrix.mat4.multiply(this.rotationMatrix, newRotationMatrix, this.rotationMatrix);
+   }
 
     this.transform = function() {
+        glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, this.coordinates);
         glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
-        glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, this.translationVector);
     }
 
     this.draw = function() {
@@ -421,8 +415,6 @@ function onClick(event) {
     const y = event.pageY - canvasYOffset;
 
     const intersection = rubiksCube.boundingBox.intersection(x, y);
-    console.log(`intersection: ${intersection.point}`);
-    console.log(`normal: ${intersection.normal}`);
 }
 
 function rotate(event) {
@@ -441,8 +433,8 @@ function rotate(event) {
 
 function startRotate(event) {
     if (isLeftMouse(event)) {
-        initSticker = rubiksCube.select(event.pageX - canvasXOffset, canvas.height - event.pageY + canvasYOffset);
-        if (initSticker) {
+        initIntersection = rubiksCube.select(event.pageX, event.pageY);
+        if (initIntersection) {
             leftMouseDown = true;
         }
     } else if (isRightMouse(event)) {
@@ -455,12 +447,10 @@ function startRotate(event) {
 function endRotate(event) {
     if (leftMouseDown) {
         leftMouseDown = false;
-        let x = event.pageX - canvasXOffset;
-        let y = canvas.height - event.pageY + canvasYOffset;
-        newSticker = rubiksCube.select(x, y);
-        if (newSticker) {
-            rubiksCube.setRotationAxis(initSticker, newSticker);
-            rubiksCube.setRotatedCubes(initSticker, newSticker, rubiksCube.rotationAxis);
+        newIntersection = rubiksCube.select(event.pageX, event.pageY);
+        if (newIntersection) {
+            rubiksCube.setRotationAxis(initIntersection, newIntersection);
+            rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
             isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
         }
     }
