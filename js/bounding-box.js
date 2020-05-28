@@ -79,7 +79,7 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
         glMatrix.mat4.multiply(unprojectMatrix, this.projectionMatrix, this.modelViewMatrix);
         glMatrix.mat4.invert(unprojectMatrix, unprojectMatrix);
         const clip = screenToClipCoordinates(x, y, z);
-        let world = glMatrix.vec4.create();
+        const world = glMatrix.vec4.create();
         glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
         glMatrix.vec4.scale(world, world, 1 / world[3]);
         return glMatrix.vec3.fromValues(...world);

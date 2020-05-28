@@ -62,8 +62,8 @@ function RubiksCube(data) {
                 this.cubes[r][g] = new Array(3);
                 for (let b = 0; b < 3; b++) {
                     // Each cube has dimensions 2x2x2 units.
-                    let coordinates = glMatrix.vec3.fromValues(2 * (r - 1), 2 * (g - 1), 2 * (b - 1));
-                    let cube = new Cube(this, coordinates, data);
+                    const coordinates = glMatrix.vec3.fromValues(2 * (r - 1), 2 * (g - 1), 2 * (b - 1));
+                    const cube = new Cube(this, coordinates, data);
                     this.cubes[r][g][b] = cube;
                 }
             }
@@ -80,7 +80,7 @@ function RubiksCube(data) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalsBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.normals), gl.STATIC_DRAW);
         // faces
-        let buffer = new Array();
+        const buffer = new Array();
         for (let faceGroup of data.faces) {
            buffer.push(...faceGroup.vertex_indices);
         }
@@ -101,7 +101,7 @@ function RubiksCube(data) {
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
                 for (let b = 0; b < 3; b++) {
-                    let cube = this.cubes[r][g][b];
+                    const cube = this.cubes[r][g][b];
                     cube.draw();
                 }
             }
@@ -127,14 +127,15 @@ function RubiksCube(data) {
             }
         }
 
-        let initCoordinate = initIntersection.point[i];
-        let newCoordinate = newIntersection.point[i];
-        let cubes = [];
+        const initCoordinate = initIntersection.point[i];
+        const newCoordinate = newIntersection.point[i];
+        const cubes = [];
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
                 for (let b = 0; b < 3; b++) {
                     const c = this.cubes[r][g][b];
-                    if (inRange(initCoordinate, newCoordinate, c.coordinates[i])) {
+                    const coordinate = c.coordinates[i];
+                    if (inRange(initCoordinate, coordinate, 1) && inRange(newCoordinate, coordinate, 1)) {
                         cubes.push(c);
                     }
                 }
@@ -146,10 +147,10 @@ function RubiksCube(data) {
         }
     }
 
-    function inRange(r1, r2, value) {
-        const min = r1 < r2 ? r1 : r2;
-        const max = r1 < r2 ? r2 : r1;
-        return Math.floor(min) <= value && value <= Math.ceil(max);
+    function inRange(value, origin, delta) {
+        const lower = origin - delta;
+        const upper = origin + delta;
+        return lower < value && value < upper;
     }
 
     /*
@@ -168,12 +169,12 @@ function RubiksCube(data) {
         }
 
         this.rotationAngle += DEGREES;
-        let newRotationMatrix = glMatrix.mat4.create();
+        const newRotationMatrix = glMatrix.mat4.create();
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(DEGREES), this.rotationAxis);
 
         for (let cube of this.rotatedCubes) {
             cube.rotate(newRotationMatrix);
-       }
+        }
     }
 
     this.select = function(x, y) {
@@ -185,11 +186,11 @@ function RubiksCube(data) {
             return;
         }
 
-        let axis = glMatrix.vec3.create();
+        const axis = glMatrix.vec3.create();
 
         // The selected stickers are on the same face of the Rubik's cube.
         if (glMatrix.vec3.equals(initIntersection.normal, newIntersection.normal)) {
-            let direction = glMatrix.vec3.create();
+            const direction = glMatrix.vec3.create();
             glMatrix.vec3.subtract(direction, newIntersection.point, initIntersection.point);
             glMatrix.vec3.cross(axis, initIntersection.normal, direction);
         } else {
@@ -207,10 +208,10 @@ function RubiksCube(data) {
             isRotating = false;
             isScrambling = false;
         } else {
-            let cube = this.randomCube();
-            let i = Math.floor(Math.random() * 3);
-            let initIntersection = cube.stickers[i];
-            let newIntersection = cube.stickers[(i + 1) % 2];
+            const cube = this.randomCube();
+            const i = Math.floor(Math.random() * 3);
+            const initIntersection = cube.stickers[i];
+            const newIntersection = cube.stickers[(i + 1) % 2];
             this.setRotationAxis(initIntersection, newIntersection);
             this.setRotatedCubes(initIntersection, newIntersection, this.rotationAxis);
             isRotating = true;
@@ -236,10 +237,8 @@ function Cube(rubiksCube, coordinates, data) {
     this.coordinates = coordinates;
 
     this.rotate = function(newRotationMatrix) {
-        glMatrix.vec3.transformMat4(this.coordinates, this.coordinates, newRotationMatrix);
-        glMatrix.vec3.round(this.coordinates, this.coordinates);
-
         glMatrix.mat4.multiply(this.rotationMatrix, newRotationMatrix, this.rotationMatrix);
+        glMatrix.vec3.transformMat4(this.coordinates, this.coordinates, newRotationMatrix);
    }
 
     this.transform = function() {
@@ -248,17 +247,17 @@ function Cube(rubiksCube, coordinates, data) {
     }
 
     this.draw = function() {
-        let mvMatrix = glMatrix.mat4.create();
+        const mvMatrix = glMatrix.mat4.create();
         glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
         this.transform();
         setMatrixUniforms();
 
         let offset = 0;
         for (let faceGroup of this.data.faces) {
-            let material = faceGroup.material;
+            const material = faceGroup.material;
             // Blender doesn't seem to support per-object ambient colors or export the global ambient color,
             // so we compute our own ambient color as a darker version of the diffuse color.
-            let ambient = glMatrix.vec3.create();
+            const ambient = glMatrix.vec3.create();
             glMatrix.vec3.scale(ambient, material.diffuse, 0.4);
             gl.uniform3fv(shaderProgram.ambient, ambient);
             gl.uniform3fv(shaderProgram.diffuse, material.diffuse);
@@ -299,7 +298,7 @@ function initWebGL(canvas) {
 }
 
 function getShader(gl, id) {
-    let shaderScript = document.getElementById(id);
+    const shaderScript = document.getElementById(id);
     if (!shaderScript) {
         return null;
     }
@@ -329,8 +328,8 @@ function getShader(gl, id) {
 }
 
 function initShaders() {
-    let fragmentShader = getShader(gl, 'fragmentShader');
-    let vertexShader = getShader(gl, 'vertexShader');
+    const fragmentShader = getShader(gl, 'fragmentShader');
+    const vertexShader = getShader(gl, 'vertexShader');
     shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, fragmentShader);
     gl.attachShader(shaderProgram, vertexShader);
@@ -395,37 +394,30 @@ function start(data) {
 }
 
 function setMatrixUniforms() {
-    let projectionUniform = gl.getUniformLocation(shaderProgram, 'projectionMatrix');
+    const projectionUniform = gl.getUniformLocation(shaderProgram, 'projectionMatrix');
     gl.uniformMatrix4fv(projectionUniform, false, projectionMatrix);
 
-    let modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
+    const modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
     gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
 
-    let normalMatrix = glMatrix.mat4.create();
+    const normalMatrix = glMatrix.mat4.create();
     glMatrix.mat4.invert(normalMatrix, modelViewMatrix);
     glMatrix.mat4.transpose(normalMatrix, normalMatrix);
-    let normalMatrix3 = glMatrix.mat3.create();
+    const normalMatrix3 = glMatrix.mat3.create();
     glMatrix.mat3.fromMat4(normalMatrix3, normalMatrix);
-    let normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
+    const normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
-}
-
-function onClick(event) {
-    const x = event.pageX - canvasXOffset;
-    const y = event.pageY - canvasYOffset;
-
-    const intersection = rubiksCube.boundingBox.intersection(x, y);
 }
 
 function rotate(event) {
     if (rightMouseDown) {
         xNewRight = event.pageX;
         yNewRight = event.pageY;
-        let delta_x = (xNewRight - xInitRight) / 50;
-        let delta_y = (yNewRight - yInitRight) / 50;
-        let axis = [delta_y, delta_x, 0];
-        let degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
-        let newRotationMatrix = glMatrix.mat4.create();
+        const delta_x = (xNewRight - xInitRight) / 50;
+        const delta_y = (yNewRight - yInitRight) / 50;
+        const axis = [delta_y, delta_x, 0];
+        const degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
+        const newRotationMatrix = glMatrix.mat4.create();
         glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
         glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     }
@@ -543,7 +535,6 @@ $(document).ready(function() {
         $('#glcanvas').mousemove(rotate);
         $('#glcanvas').mouseup(endRotate);
         $('#glcanvas').mouseout(endRotate);
-        $('#glcanvas').click(onClick);
         $('body').keypress(togglePerspective);
         $(window).resize(function() {
             canvasXOffset = $('#glcanvas').offset()['left'];
