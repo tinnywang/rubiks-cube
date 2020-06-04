@@ -157,10 +157,6 @@ function RubiksCube(data) {
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
     this.rotateLayer = function() {
-        if (!this.rotationAxis) {
-            return;
-        }
-
         if (Math.abs(this.rotationAngle) == 90) {
             this.rotationAngle = 0;
             isRotating = false;
@@ -200,33 +196,33 @@ function RubiksCube(data) {
         glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
 
-        this.rotationAxis = glMatrix.vec3.length(axis) == 1 ? axis : null;
+        this.rotationAxis = glMatrix.vec3.length(axis) === 1 ? axis : null;
     }
 
     this.scramble = function() {
-        if (this.scrambleCycles == 0) {
+        if (this.scrambleCycles === 0) {
             isRotating = false;
             isScrambling = false;
         } else {
-            const cube = this.randomCube();
-            const i = Math.floor(Math.random() * 3);
-            const initIntersection = cube.stickers[i];
-            const newIntersection = cube.stickers[(i + 1) % 2];
+            const plane = this.boundingBox.randomPlane();
+            const initIntersection = {
+                point: plane.randomPoint(),
+                normal: plane.normal,
+            }
+            const newIntersection = {
+                point: plane.randomPoint(),
+                normal: plane.normal,
+            }
             this.setRotationAxis(initIntersection, newIntersection);
             this.setRotatedCubes(initIntersection, newIntersection, this.rotationAxis);
+
+            if (!this.rotationAxis || !this.rotatedCubes) {
+                this.scramble();
+                return;
+            }
             isRotating = true;
             this.scrambleCycles--;
         }
-    }
-
-    this.randomCube = function() {
-        let r, g, b;
-        do {
-            r = Math.floor(Math.random() * 3);
-            g = Math.floor(Math.random() * 3);
-            b = Math.floor(Math.random() * 3);
-        } while (r == 0 && g == 0 && b == 0)
-        return this.cubes[r][g][b];
     }
 }
 

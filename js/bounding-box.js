@@ -84,6 +84,11 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
         glMatrix.vec4.scale(world, world, 1 / world[3]);
         return glMatrix.vec3.fromValues(...world);
     }
+
+    this.randomPlane = function() {
+        const i = Math.floor(Math.random() * this.planes.length);
+        return this.planes[i];
+    }
 }
 
 function Plane(p0, p1, p2) {
@@ -91,4 +96,11 @@ function Plane(p0, p1, p2) {
     this.p01 = glMatrix.vec3.subtract(glMatrix.vec3.create(), p1, p0);
     this.p02 = glMatrix.vec3.subtract(glMatrix.vec3.create(), p2, p0);
     this.normal = glMatrix.vec3.cross(glMatrix.vec3.create(), this.p01, this.p02);
+
+    this.randomPoint = function() {
+        return glMatrix.vec3.add( glMatrix.vec3.create(),
+            glMatrix.vec3.scale(glMatrix.vec3.create(), this.p01, Math.random()),
+            glMatrix.vec3.scale(glMatrix.vec3.create(), this.p02, Math.random()),
+        )
+    }
 }
