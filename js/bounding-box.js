@@ -1,6 +1,8 @@
 const Z_INDEX = 2;
 
-function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
+function BoundingBox(canvasWidth, canvasHeight, projectionMatrix, modelViewMatrix, eye) {
+    this.canvasWidth = canvasWidth;
+    this.canvasHeight = canvasHeight;
     this.projectionMatrix = projectionMatrix;
     this.modelViewMatrix = modelViewMatrix;
     this.eye = eye;
@@ -67,9 +69,9 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
         return intersection;
     }
 
-    function screenToClipCoordinates(x, y, z) {
-        const clipX = 2 * x / canvas.width - 1;
-        const clipY = 1 - 2 * y / canvas.height;
+    function screenToClipCoordinates(x, y, z, width, height) {
+        const clipX = 2 * x / width - 1;
+        const clipY = 1 - 2 * y / height;
         const clipZ = 2 * z - 1;
         return glMatrix.vec4.fromValues(clipX, clipY, clipZ, 1);
     }
@@ -78,7 +80,7 @@ function BoundingBox(projectionMatrix, modelViewMatrix, eye) {
         const unprojectMatrix = glMatrix.mat4.create();
         glMatrix.mat4.multiply(unprojectMatrix, this.projectionMatrix, this.modelViewMatrix);
         glMatrix.mat4.invert(unprojectMatrix, unprojectMatrix);
-        const clip = screenToClipCoordinates(x, y, z);
+        const clip = screenToClipCoordinates(x, y, z, this.canvasWidth, this.canvasHeight);
         const world = glMatrix.vec4.create();
         glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
         glMatrix.vec4.scale(world, world, 1 / world[3]);

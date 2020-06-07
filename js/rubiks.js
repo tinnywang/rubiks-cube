@@ -19,9 +19,6 @@ const Z_FAR = 100;
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 
-var canvas;
-var canvasXOffset;
-var canvasYOffset;
 var gl;
 var rubiksCube;
 var shaderProgram;
@@ -47,11 +44,17 @@ function RubiksCube(data) {
     this.rotationAxis = null; // a vec3
     this.rotationAngle = 0;
     this.scrambleCycles = 0;
-    this.cubeVerticesBuffer = null;
-    this.cubeNormalsBuffer = null;
-    this.cubeFacesBuffer = null;
+    this.verticesBuffer = null;
+    this.normalsBuffer = null;
+    this.facesBuffer = null;
     this.cubes = new Array(3);
-    this.boundingBox = new BoundingBox(projectionMatrix, modelViewMatrix, EYE);
+    this.boundingBox = new BoundingBox(
+        gl.drawingBufferWidth,
+        gl.drawingBufferHeight,
+        projectionMatrix,
+        modelViewMatrix,
+        EYE,
+    );
 
     this.init = function() {
         this.initCubeBuffers();
@@ -72,31 +75,37 @@ function RubiksCube(data) {
 
     this.initCubeBuffers = function() {
         // vertices
-        this.cubeVerticesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeVerticesBuffer);
+        this.verticesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.vertices), gl.STATIC_DRAW);
         // normals
-        this.cubeNormalsBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.cubeNormalsBuffer);
+        this.normalsBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalsBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.normals), gl.STATIC_DRAW);
         // faces
         const buffer = new Array();
         for (let faceGroup of data.faces) {
            buffer.push(...faceGroup.vertex_indices);
         }
-        this.cubeFacesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.cubeFacesBuffer);
+        this.facesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.facesBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(buffer), gl.STATIC_DRAW);
     }
 
     this.init();
 
     this.draw = function() {
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform1i(shaderProgram.lighting, 1);
 
-        glMatrix.mat4.perspective(projectionMatrix, FOV, canvas.width / canvas.height, Z_NEAR, Z_FAR);
+        glMatrix.mat4.perspective(
+            projectionMatrix,
+            FOV,
+            gl.drawingBufferWidth / gl.drawingBufferHeight,
+            Z_NEAR,
+            Z_FAR
+        );
         glMatrix.mat4.multiply(modelViewMatrix, VIEW_MATRIX, rotationMatrix);
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
@@ -174,7 +183,7 @@ function RubiksCube(data) {
     }
 
     this.select = function(x, y) {
-        return rubiksCube.boundingBox.intersection(event.pageX - canvasXOffset, event.pageY - canvasYOffset);
+        return rubiksCube.boundingBox.intersection(event.pageX - gl.offsetX, event.pageY - gl.offsetY);
     }
 
     this.setRotationAxis = function(initIntersection, newIntersection) {
@@ -260,13 +269,13 @@ function Cube(rubiksCube, coordinates, data) {
             gl.uniform3fv(shaderProgram.specular, material.specular);
             gl.uniform1f(shaderProgram.specularExponent, material.specular_exponent);
             // vertices
-            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeVerticesBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.verticesBuffer);
             gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
             // normals
-            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.cubeNormalsBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.normalsBuffer);
             gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
             // faces
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.cubeFacesBuffer);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.facesBuffer);
             gl.drawElements(gl.TRIANGLES, faceGroup.vertex_indices.length, gl.UNSIGNED_SHORT, offset);
 
             // Offset must be a multiple of the size of the array buffer's type,
@@ -370,18 +379,20 @@ function drawScene() {
 }
 
 function start(data) {
-    canvas = document.getElementById('glcanvas');
-    canvasXOffset = $('#glcanvas').offset()['left'];
-    canvasYOffset = $('#glcanvas').offset()['top'];
+    const canvas = document.getElementById('glcanvas');
+    const rect = canvas.getBoundingClientRect();
     gl = initWebGL(canvas);
     if (gl) {
-        initShaders();
+        gl.offsetX = rect.left;
+        gl.offsetY = rect.top;
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        initShaders();
 
         rubiksCube = new RubiksCube(data);
         perspectiveView();
@@ -536,8 +547,6 @@ $(document).ready(function() {
         $('#glcanvas').mouseout(endRotate);
         $('body').keypress(togglePerspective);
         $(window).resize(function() {
-            canvasXOffset = $('#glcanvas').offset()['left'];
-            canvasYOffset = $('#glcanvas').offset()['top'];
             canvas.width = canvas.clientWidth;
             canvas.height = canvas.clientHeight;
         });
