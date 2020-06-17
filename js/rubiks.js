@@ -295,6 +295,11 @@ function initWebGL(canvas) {
     gl = canvas.getContext('webgl', {preserveDrawingBuffer: true}) || canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
+    window.onresize = function () {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    };
+
     if (!gl) {
         console.log("Your browser supports WebGL, but initialization failed.");
         return null;
@@ -546,9 +551,5 @@ $(document).ready(function() {
         $('#glcanvas').mouseup(endRotate);
         $('#glcanvas').mouseout(endRotate);
         $('body').keypress(togglePerspective);
-        $(window).resize(function() {
-            canvas.width = canvas.clientWidth;
-            canvas.height = canvas.clientHeight;
-        });
     });
 });
