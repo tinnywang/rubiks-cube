@@ -19,6 +19,7 @@ const Z_FAR = 100;
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 
+var $canvas;
 var gl;
 var rubiksCube;
 var shaderProgram;
@@ -49,8 +50,7 @@ function RubiksCube(data) {
     this.facesBuffer = null;
     this.cubes = new Array(3);
     this.boundingBox = new BoundingBox(
-        gl.drawingBufferWidth,
-        gl.drawingBufferHeight,
+        gl,
         projectionMatrix,
         modelViewMatrix,
         EYE,
@@ -183,7 +183,8 @@ function RubiksCube(data) {
     }
 
     this.select = function(x, y) {
-        return rubiksCube.boundingBox.intersection(event.pageX - gl.offsetX, event.pageY - gl.offsetY);
+        const offset = $canvas.offset();
+        return rubiksCube.boundingBox.intersection(event.pageX - offset.left, event.pageY - offset.top);
     }
 
     this.setRotationAxis = function(initIntersection, newIntersection) {
@@ -384,12 +385,8 @@ function drawScene() {
 }
 
 function start(data) {
-    const canvas = document.getElementById('glcanvas');
-    const rect = canvas.getBoundingClientRect();
-    gl = initWebGL(canvas);
+    gl = initWebGL($canvas[0]);
     if (gl) {
-        gl.offsetX = rect.left;
-        gl.offsetY = rect.top;
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.LEQUAL);
@@ -543,13 +540,14 @@ function scramble() {
 }
 
 $(document).ready(function() {
+    $canvas = $('#glcanvas');
     $.get('/models/rubiks-cube.json', function(data) {
         start(data[0]);
-        $('#glcanvas').bind('contextmenu', function(e) { return false; });
-        $('#glcanvas').mousedown(startRotate);
-        $('#glcanvas').mousemove(rotate);
-        $('#glcanvas').mouseup(endRotate);
-        $('#glcanvas').mouseout(endRotate);
+        $canvas.bind('contextmenu', function(e) { return false; });
+        $canvas.mousedown(startRotate);
+        $canvas.mousemove(rotate);
+        $canvas.mouseup(endRotate);
+        $canvas.mouseout(endRotate);
         $('body').keypress(togglePerspective);
     });
 });

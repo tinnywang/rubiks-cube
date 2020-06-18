@@ -2,9 +2,8 @@ const Z_INDEX = 2;
 
 // The bounding box is a 6x6x6 cube, centered at the origin, that inscribes the Rubik's cube.
 // Each face of the bounding box corresponds to a side of the Rubik's cube.
-function BoundingBox(canvasWidth, canvasHeight, projectionMatrix, modelViewMatrix, eye) {
-    this.canvasWidth = canvasWidth;
-    this.canvasHeight = canvasHeight;
+function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
+    this.gl = gl;
     this.projectionMatrix = projectionMatrix;
     this.modelViewMatrix = modelViewMatrix;
     this.eye = eye;
@@ -82,7 +81,7 @@ function BoundingBox(canvasWidth, canvasHeight, projectionMatrix, modelViewMatri
         const unprojectMatrix = glMatrix.mat4.create();
         glMatrix.mat4.multiply(unprojectMatrix, this.projectionMatrix, this.modelViewMatrix);
         glMatrix.mat4.invert(unprojectMatrix, unprojectMatrix);
-        const clip = screenToClipCoordinates(x, y, z, this.canvasWidth, this.canvasHeight);
+        const clip = screenToClipCoordinates(x, y, z, gl.drawingBufferWidth, gl.drawingBufferHeight);
         const world = glMatrix.vec4.create();
         glMatrix.vec4.transformMat4(world, clip, unprojectMatrix);
         glMatrix.vec4.scale(world, world, 1 / world[3]);
