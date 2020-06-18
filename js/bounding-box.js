@@ -1,5 +1,7 @@
 const Z_INDEX = 2;
 
+// The bounding box is a 6x6x6 cube, centered at the origin, that inscribes the Rubik's cube.
+// Each face of the bounding box corresponds to a side of the Rubik's cube.
 function BoundingBox(canvasWidth, canvasHeight, projectionMatrix, modelViewMatrix, eye) {
     this.canvasWidth = canvasWidth;
     this.canvasHeight = canvasHeight;
