@@ -151,7 +151,7 @@ function RubiksCube(data) {
             }
         }
 
-        if (cubes.length == 9) {
+        if (cubes.length === 9) {
             this.rotatedCubes = cubes;
         }
     }
@@ -166,7 +166,7 @@ function RubiksCube(data) {
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
     this.rotateLayer = function() {
-        if (Math.abs(this.rotationAngle) == 90) {
+        if (Math.abs(this.rotationAngle) === 90) {
             this.rotationAngle = 0;
             isRotating = false;
             this.scramble();
@@ -315,15 +315,15 @@ function getShader(gl, id) {
     let source = '';
     let currentChild = shaderScript.firstChild;
     while (currentChild) {
-        if (currentChild.nodeType == currentChild.TEXT_NODE) {
+        if (currentChild.nodeType === currentChild.TEXT_NODE) {
             source += currentChild.textContent;
         }
         currentChild = currentChild.nextSibling;
     }
     let shader;
-    if (shaderScript.type == 'x-shader/x-fragment') {
+    if (shaderScript.type === 'x-shader/x-fragment') {
         shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if (shaderScript.type == 'x-shader/x-vertex') {
+    } else if (shaderScript.type === 'x-shader/x-vertex') {
         shader = gl.createShader(gl.VERTEX_SHADER);
     } else {
         return null;
@@ -465,11 +465,11 @@ function endRotate(event) {
 }
 
 function isLeftMouse(event) {
-    return event.button == LEFT_MOUSE && !event.ctrlKey
+    return event.button === LEFT_MOUSE && !event.ctrlKey
 }
 
 function isRightMouse(event) {
-    return (event.button == LEFT_MOUSE && event.ctrlKey) || event.button == RIGHT_MOUSE
+    return (event.button === LEFT_MOUSE && event.ctrlKey) || event.button === RIGHT_MOUSE
 }
 
 function topView() {
