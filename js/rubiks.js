@@ -541,7 +541,11 @@ function scramble() {
 
 $(document).ready(function() {
     $canvas = $('#glcanvas');
-    $.get('/models/rubiks-cube.json', function(data) {
+
+    const pathname = location.pathname;
+    const base = pathname.substring(0, pathname.lastIndexOf('/'));
+
+    $.get(`${base}/models/rubiks-cube.json`, function(data) {
         start(data[0]);
         $canvas.bind('contextmenu', function(e) { return false; });
         $canvas.mousedown(startRotate);
