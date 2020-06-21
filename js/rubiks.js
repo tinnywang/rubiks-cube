@@ -433,6 +433,8 @@ function rotate(event) {
 }
 
 function startRotate(event) {
+    // The Rubik's cube can be rotated with right mouse while it's being scrambled, but
+    // individual layers of the cube cannot be rotated with left mouse.
     if (!isScrambling && isLeftMouse(event)) {
         initIntersection = rubiksCube.select(event.pageX, event.pageY);
         if (initIntersection) {
