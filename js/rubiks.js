@@ -433,10 +433,7 @@ function rotate(event) {
 }
 
 function startRotate(event) {
-    if (isScrambling) {
-        return;
-    }
-    if (isLeftMouse(event)) {
+    if (!isScrambling && isLeftMouse(event)) {
         initIntersection = rubiksCube.select(event.pageX, event.pageY);
         if (initIntersection) {
             leftMouseDown = true;
