@@ -12,7 +12,7 @@ const LIGHTS = [
     },
 ];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
-const DEGREES = 5;
+const SNAP_DEGREES = 5;
 const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
@@ -166,16 +166,32 @@ function RubiksCube(data) {
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
     this.rotateLayer = function() {
-        if (Math.abs(this.rotationAngle) === 90) {
+        if (this.rotationAngle === 90) {
             this.rotationAngle = 0;
             isRotating = false;
             this.scramble();
             return;
         }
 
-        this.rotationAngle += DEGREES;
+        // TODO: clean up this code.
+        let degrees = 0;
+        if (this.rotationAngle + SNAP_DEGREES > 90) {
+            degrees = 90 - this.rotationAngle;
+        } else if (newIntersection && initIntersection) {
+            degrees = glMatrix.vec3.length(
+                glMatrix.vec3.subtract(
+                    glMatrix.vec3.create(),
+                    newIntersection.point,
+                    initIntersection.point,
+                ),
+            );
+        } else {
+            degrees = SNAP_DEGREES;
+        }
+        this.rotationAngle += degrees;
+
         const newRotationMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(DEGREES), this.rotationAxis);
+        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), this.rotationAxis);
 
         for (let cube of this.rotatedCubes) {
             cube.rotate(newRotationMatrix);
@@ -291,7 +307,7 @@ function Cube(rubiksCube, coordinates, data) {
 function initWebGL(canvas) {
     if (!window.WebGLRenderingContext) {
         console.log("Your browser doesn't support WebGL.")
-            return null;
+        return null;
     }
     gl = canvas.getContext('webgl', {preserveDrawingBuffer: true}) || canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
     canvas.width = canvas.clientWidth;
@@ -419,7 +435,14 @@ function setMatrixUniforms() {
 }
 
 function rotate(event) {
-    if (rightMouseDown) {
+    if (leftMouseDown) {
+        newIntersection = rubiksCube.select(event.pageX, event.pageY);
+        if (newIntersection) {
+            rubiksCube.setRotationAxis(initIntersection, newIntersection);
+            rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
+            isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
+        }
+    } else if (rightMouseDown) {
         xNewRight = event.pageX;
         yNewRight = event.pageY;
         const delta_x = (xNewRight - xInitRight) / 50;
@@ -450,12 +473,6 @@ function startRotate(event) {
 function endRotate(event) {
     if (leftMouseDown) {
         leftMouseDown = false;
-        newIntersection = rubiksCube.select(event.pageX, event.pageY);
-        if (newIntersection) {
-            rubiksCube.setRotationAxis(initIntersection, newIntersection);
-            rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
-            isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
-        }
     }
     rightMouseDown = false;
 }
