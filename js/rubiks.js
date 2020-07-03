@@ -166,10 +166,26 @@ function RubiksCube(data) {
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
     this.rotateLayer = function() {
+        // A rotation has been completed. Stop rotating.
         if (this.rotationAngle === 90) {
             this.rotationAngle = 0;
+            initIntersection = null;
+            newIntersection = null;
+            this.rotationAxis = null;
+            this.rotatedCubes = null;
             isRotating = false;
             this.scramble();
+            return;
+        }
+
+        // Set this.rotationAxis and this.rotatedCubes before starting a rotation.
+        if (this.rotationAngle === 0)  {
+            rubiksCube.setRotationAxis(initIntersection, newIntersection);
+            rubiksCube.setRotatedCubes(initIntersection, newIntersection, this.rotationAxis);
+            isRotating = !!(this.rotatedCubes && this.rotationAxis);
+        }
+
+        if (!isRotating) {
             return;
         }
 
@@ -392,9 +408,7 @@ function initShaders() {
 }
 
 function drawScene() {
-    if (isRotating) {
-        rubiksCube.rotateLayer();
-    }
+    rubiksCube.rotateLayer();
 
     rubiksCube.draw();
     requestAnimationFrame(drawScene);
@@ -438,9 +452,11 @@ function rotate(event) {
     if (leftMouseDown) {
         newIntersection = rubiksCube.select(event.pageX, event.pageY);
         if (newIntersection) {
+            /*
             rubiksCube.setRotationAxis(initIntersection, newIntersection);
             rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
             isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
+            */
         }
     } else if (rightMouseDown) {
         xNewRight = event.pageX;
