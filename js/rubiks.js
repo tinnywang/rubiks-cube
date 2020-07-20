@@ -162,6 +162,23 @@ function RubiksCube(data) {
         return lower < value && value < upper;
     }
 
+    // TODO: use angle between movement and direction to determine if movement is valid?
+    // Or keep using dot product?
+    rotationDegrees = function(initIntersection, newIntersection, axis) {
+        if (!initIntersection || !newIntersection) {
+            return 0;
+        }
+
+        const direction = glMatrix.vec3.cross(glMatrix.vec3.create(), axis, initIntersection.normal);
+        const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
+        const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
+        if (dotProduct >= 0.9) {
+            return dotProduct * glMatrix.vec3.dot(direction, movement);
+        } else {
+            return 0;
+        }
+    }
+
     /*
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
@@ -193,16 +210,8 @@ function RubiksCube(data) {
         let degrees = 0;
         if (this.rotationAngle + SNAP_DEGREES > 90) {
             degrees = 90 - this.rotationAngle;
-        } else if (newIntersection && initIntersection) {
-            degrees = glMatrix.vec3.length(
-                glMatrix.vec3.subtract(
-                    glMatrix.vec3.create(),
-                    newIntersection.point,
-                    initIntersection.point,
-                ),
-            );
         } else {
-            degrees = SNAP_DEGREES;
+            degrees = rotationDegrees(initIntersection, newIntersection, this.rotationAxis) || SNAP_DEGREES;
         }
         this.rotationAngle += degrees;
 
