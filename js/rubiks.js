@@ -38,13 +38,9 @@ var rotationMatrix = glMatrix.mat4.create();
 
 function RubiksCube(data) {
     this.data = data;
-    this.rotatedCubes = null; // an array of Cubes
-    this.rotationAxis = null; // a vec3
-    this.rotationAngle = 0;
+    this.buffers = null;
+    this.rotation = null;
     this.scrambleCycles = 0;
-    this.verticesBuffer = null;
-    this.normalsBuffer = null;
-    this.facesBuffer = null;
     this.cubes = new Array(3);
     this.boundingBox = new BoundingBox(
         gl,
@@ -54,7 +50,8 @@ function RubiksCube(data) {
     );
 
     this.init = function() {
-        this.initCubeBuffers();
+        this.initBuffers();
+        this.initRotation();
 
         for (let r = 0; r < 3; r++) {
             this.cubes[r] = new Array(3);
@@ -70,23 +67,37 @@ function RubiksCube(data) {
         }
     }
 
-    this.initCubeBuffers = function() {
-        // vertices
-        this.verticesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
+    this.initBuffers = function() {
+        const vertices = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertices);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.vertices), gl.STATIC_DRAW);
-        // normals
-        this.normalsBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.normalsBuffer);
+
+        const normals = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, normals);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.normals), gl.STATIC_DRAW);
-        // faces
+
         const buffer = new Array();
         for (let faceGroup of data.faces) {
            buffer.push(...faceGroup.vertex_indices);
         }
-        this.facesBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.facesBuffer);
+        const faces = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, faces);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(buffer), gl.STATIC_DRAW);
+
+        this.buffers = {
+            vertices: vertices,
+            normals: normals,
+            faces: faces,
+        };
+    }
+
+    this.initRotation = function() {
+        this.rotation = {
+            cubes: null, // an array of Cubes
+            axis: null,  // a vec3
+            angle: 0,    // the total angle of rotation
+            degrees: 0,  // the degrees of rotation from the previous movement
+        };
     }
 
     this.init();
@@ -115,13 +126,13 @@ function RubiksCube(data) {
     }
 
     /*
-     * Sets this.rotatedCubes to an array of cubes that are in the same plane as initCube, newCube, and axis.
+     * Sets this.rotation.cubes to an array of cubes that are in the same plane as initCube, newCube, and axis.
      */
     this.setRotatedCubes = function(initIntersection, newIntersection, axis) {
         if (!initIntersection || !newIntersection || !axis) {
             return;
         }
-        this.rotatedCubes = null;
+        this.rotation.cubes = null;
 
         if (!axis) {
             return;
@@ -149,7 +160,7 @@ function RubiksCube(data) {
         }
 
         if (cubes.length === 9) {
-            this.rotatedCubes = cubes;
+            this.rotation.cubes = cubes;
         }
     }
 
@@ -159,9 +170,7 @@ function RubiksCube(data) {
         return lower < value && value < upper;
     }
 
-    // TODO: use angle between movement and direction to determine if movement is valid?
-    // Or keep using dot product?
-    this.rotationDegrees = function(initIntersection, newIntersection, axis) {
+    this.setRotationDegrees = function(initIntersection, newIntersection, axis) {
         if (!initIntersection || !newIntersection) {
             return 0;
         }
@@ -169,7 +178,7 @@ function RubiksCube(data) {
         const direction = glMatrix.vec3.cross(glMatrix.vec3.create(), axis, initIntersection.normal);
         const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
         const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
-        return Math.abs(dotProduct) > 0.75 ? glMatrix.vec3.length(movement) : 0;
+        this.rotation.degrees = Math.abs(dotProduct) > 0.75 ? glMatrix.vec3.length(movement) : 0;
     }
 
     this.select = function(x, y) {
@@ -178,7 +187,7 @@ function RubiksCube(data) {
     }
 
     /*
-     * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
+     * Rotates this.rotation.cubes around this.rotation.axis by DEGREES.
      */
     this.startRotate = function(x, y) {
         const start = this.select(x, y)
@@ -189,43 +198,41 @@ function RubiksCube(data) {
         $canvas.mousemove((event) => {
             const end = this.select(event.pageX, event.pageY);
 
-           // Set this.rotationAxis and this.rotatedCubes before starting a rotation.
-            if (this.rotationAngle === 0)  {
+           // Set this.rotation.axis and this.rotation.cubes before starting a rotation.
+            if (this.rotation.angle === 0)  {
                 this.setRotationAxis(start, end);
-                this.setRotatedCubes(start, end, this.rotationAxis);
-                if (!this.rotatedCubes || !this.rotationAxis) {
+                this.setRotatedCubes(start, end, this.rotation.axis);
+                if (!this.rotation.cubes || !this.rotation.axis) {
                     return;
                 }
             }
 
-            // TODO: clean up this code.
-            const degrees = this.rotationDegrees(start, end, this.rotationAxis);
-            this.rotate(degrees);
+            this.setRotationDegrees(start, end, this.rotation.axis);
+            this.rotate();
         });
     }
 
-    this.rotate = function(degrees) {
-        if (!this.rotationAxis || !this.rotatedCubes) {
+    this.rotate = function() {
+        if (!this.rotation.axis || !this.rotation.cubes) {
             return null;
         }
 
         // A rotation has been completed. Stop rotating.
-        if (this.rotationAngle === 90) {
-            this.rotationAngle = 0;
-            this.rotationAxis = null;
-            this.rotatedCubes = null;
+        if (this.rotation.angle === 90) {
+            this.initRotation();
             return;
         }
 
-        if (this.rotationAngle + SNAP_DEGREES > 90) {
-            degrees = 90 - this.rotationAngle;
+        let degrees = this.rotation.degrees;
+        if (this.rotation.angle + SNAP_DEGREES > 90) {
+            degrees = 90 - this.rotation.angle;
         } 
-        this.rotationAngle += degrees;
+        this.rotation.angle += degrees;
 
         const newRotationMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), this.rotationAxis);
+        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), this.rotation.axis);
 
-        for (let cube of this.rotatedCubes) {
+        for (let cube of this.rotation.cubes) {
             cube.rotate(newRotationMatrix);
         }
         requestAnimationFrame(drawScene);
@@ -250,7 +257,7 @@ function RubiksCube(data) {
         glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
 
-        this.rotationAxis = glMatrix.vec3.length(axis) === 1 ? axis : null;
+        this.rotation.axis = glMatrix.vec3.length(axis) === 1 ? axis : null;
     }
 
     this.scramble = function() {
@@ -268,9 +275,9 @@ function RubiksCube(data) {
                 normal: plane.normal,
             }
             this.setRotationAxis(initIntersection, newIntersection);
-            this.setRotatedCubes(initIntersection, newIntersection, this.rotationAxis);
+            this.setRotatedCubes(initIntersection, newIntersection, this.rotation.axis);
 
-            if (!this.rotationAxis || !this.rotatedCubes) {
+            if (!this.rotation.axis || !this.rotation.cubes) {
                 this.scramble();
                 return;
             }
@@ -314,13 +321,13 @@ function Cube(rubiksCube, coordinates, data) {
             gl.uniform3fv(shaderProgram.specular, material.specular);
             gl.uniform1f(shaderProgram.specularExponent, material.specular_exponent);
             // vertices
-            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.verticesBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.buffers.vertices);
             gl.vertexAttribPointer(shaderProgram.vertexPosition, 3, gl.FLOAT, false, 0, 0);
             // normals
-            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.normalsBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rubiksCube.buffers.normals);
             gl.vertexAttribPointer(shaderProgram.vertexNormal, 3, gl.FLOAT, false, 0, 0);
             // faces
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.facesBuffer);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rubiksCube.buffers.faces);
             gl.drawElements(gl.TRIANGLES, faceGroup.vertex_indices.length, gl.UNSIGNED_SHORT, offset);
 
             // Offset must be a multiple of the size of the array buffer's type,
@@ -465,8 +472,8 @@ function rotate(event) {
         newIntersection = rubiksCube.select(event.pageX, event.pageY);
         if (newIntersection) {
             // rubiksCube.setRotationAxis(initIntersection, newIntersection);
-            // rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
-            // isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
+            // rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotation.axis);
+            // isRotating = !!(rubiksCube.rotation.cubes && rubiksCube.rotation.axis);
         }
     } else if (rightMouseDown) {
         xNewRight = event.pageX;
@@ -591,7 +598,6 @@ $(document).ready(function() {
         start(data[0]);
         $canvas.bind('contextmenu', function(e) { return false; });
         $canvas.mousedown(startRotate);
-        //$canvas.mousemove(rotate);
         $canvas.mouseup(endRotate);
         $canvas.mouseout(endRotate);
         $('body').keypress(togglePerspective);
