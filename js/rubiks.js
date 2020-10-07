@@ -24,15 +24,12 @@ var gl;
 var rubiksCube;
 var shaderProgram;
 
+var leftMouseDown = false;
 var rightMouseDown = false;
 var xInitRight;
 var yInitRight;
 var xNewRight;
 var yNewRight;
-var leftMouseDown = false;
-var initIntersection;
-var newIntersection;
-var isRotating = false;
 var isScrambling = false;
 
 var modelViewMatrix = glMatrix.mat4.create();
@@ -164,7 +161,7 @@ function RubiksCube(data) {
 
     // TODO: use angle between movement and direction to determine if movement is valid?
     // Or keep using dot product?
-    rotationDegrees = function(initIntersection, newIntersection, axis) {
+    this.rotationDegrees = function(initIntersection, newIntersection, axis) {
         if (!initIntersection || !newIntersection) {
             return 0;
         }
@@ -172,47 +169,57 @@ function RubiksCube(data) {
         const direction = glMatrix.vec3.cross(glMatrix.vec3.create(), axis, initIntersection.normal);
         const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
         const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
-        if (dotProduct >= 0.9) {
-            return dotProduct * glMatrix.vec3.dot(direction, movement);
-        } else {
-            return 0;
-        }
+        return Math.abs(dotProduct) > 0.75 ? glMatrix.vec3.length(movement) : 0;
+    }
+
+    this.select = function(x, y) {
+        const offset = $canvas.offset();
+        return this.boundingBox.intersection(event.pageX - offset.left, event.pageY - offset.top);
     }
 
     /*
      * Rotates this.rotatedCubes around this.rotationAxis by DEGREES.
      */
-    this.rotateLayer = function() {
+    this.startRotate = function(x, y) {
+        const start = this.select(x, y)
+        if (!start) {
+            return;
+        }
+
+        $canvas.mousemove((event) => {
+            const end = this.select(event.pageX, event.pageY);
+
+           // Set this.rotationAxis and this.rotatedCubes before starting a rotation.
+            if (this.rotationAngle === 0)  {
+                this.setRotationAxis(start, end);
+                this.setRotatedCubes(start, end, this.rotationAxis);
+                if (!this.rotatedCubes || !this.rotationAxis) {
+                    return;
+                }
+            }
+
+            // TODO: clean up this code.
+            const degrees = this.rotationDegrees(start, end, this.rotationAxis);
+            this.rotate(degrees);
+        });
+    }
+
+    this.rotate = function(degrees) {
+        if (!this.rotationAxis || !this.rotatedCubes) {
+            return null;
+        }
+
         // A rotation has been completed. Stop rotating.
         if (this.rotationAngle === 90) {
             this.rotationAngle = 0;
-            initIntersection = null;
-            newIntersection = null;
             this.rotationAxis = null;
             this.rotatedCubes = null;
-            isRotating = false;
-            this.scramble();
             return;
         }
 
-        // Set this.rotationAxis and this.rotatedCubes before starting a rotation.
-        if (this.rotationAngle === 0)  {
-            rubiksCube.setRotationAxis(initIntersection, newIntersection);
-            rubiksCube.setRotatedCubes(initIntersection, newIntersection, this.rotationAxis);
-            isRotating = !!(this.rotatedCubes && this.rotationAxis);
-        }
-
-        if (!isRotating) {
-            return;
-        }
-
-        // TODO: clean up this code.
-        let degrees = 0;
         if (this.rotationAngle + SNAP_DEGREES > 90) {
             degrees = 90 - this.rotationAngle;
-        } else {
-            degrees = rotationDegrees(initIntersection, newIntersection, this.rotationAxis) || SNAP_DEGREES;
-        }
+        } 
         this.rotationAngle += degrees;
 
         const newRotationMatrix = glMatrix.mat4.create();
@@ -221,11 +228,7 @@ function RubiksCube(data) {
         for (let cube of this.rotatedCubes) {
             cube.rotate(newRotationMatrix);
         }
-    }
-
-    this.select = function(x, y) {
-        const offset = $canvas.offset();
-        return rubiksCube.boundingBox.intersection(event.pageX - offset.left, event.pageY - offset.top);
+        requestAnimationFrame(drawScene);
     }
 
     this.setRotationAxis = function(initIntersection, newIntersection) {
@@ -417,10 +420,9 @@ function initShaders() {
 }
 
 function drawScene() {
-    rubiksCube.rotateLayer();
-
     rubiksCube.draw();
-    requestAnimationFrame(drawScene);
+    //rubiksCube.rotate();
+    //requestAnimationFrame(drawScene);
 }
 
 function start(data) {
@@ -436,7 +438,7 @@ function start(data) {
         initShaders();
 
         rubiksCube = new RubiksCube(data);
-        perspectiveView();
+        //perspectiveView();
         drawScene();
     }
 }
@@ -457,15 +459,14 @@ function setMatrixUniforms() {
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
 
+/*
 function rotate(event) {
     if (leftMouseDown) {
         newIntersection = rubiksCube.select(event.pageX, event.pageY);
         if (newIntersection) {
-            /*
-            rubiksCube.setRotationAxis(initIntersection, newIntersection);
-            rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
-            isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
-            */
+            // rubiksCube.setRotationAxis(initIntersection, newIntersection);
+            // rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotationAxis);
+            // isRotating = !!(rubiksCube.rotatedCubes && rubiksCube.rotationAxis);
         }
     } else if (rightMouseDown) {
         xNewRight = event.pageX;
@@ -479,15 +480,14 @@ function rotate(event) {
         glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
     }
 }
+*/
 
 function startRotate(event) {
     // The Rubik's cube can be rotated with right mouse while it's being scrambled, but
     // individual layers of the cube cannot be rotated with left mouse.
-    if (!isScrambling && isLeftMouse(event)) {
-        initIntersection = rubiksCube.select(event.pageX, event.pageY);
-        if (initIntersection) {
-            leftMouseDown = true;
-        }
+    if (isLeftMouse(event)) {
+        leftMouseDown = true;
+        rubiksCube.startRotate(event.pageX, event.pageY);
     } else if (isRightMouse(event)) {
         rightMouseDown = true;
         xInitRight = event.pageX;
@@ -498,6 +498,7 @@ function startRotate(event) {
 function endRotate(event) {
     if (leftMouseDown) {
         leftMouseDown = false;
+        $canvas.off('mousemove');
     }
     rightMouseDown = false;
 }
@@ -590,7 +591,7 @@ $(document).ready(function() {
         start(data[0]);
         $canvas.bind('contextmenu', function(e) { return false; });
         $canvas.mousedown(startRotate);
-        $canvas.mousemove(rotate);
+        //$canvas.mousemove(rotate);
         $canvas.mouseup(endRotate);
         $canvas.mouseout(endRotate);
         $('body').keypress(togglePerspective);
