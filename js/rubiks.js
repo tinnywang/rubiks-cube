@@ -12,12 +12,12 @@ const LIGHTS = [
     },
 ];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
-const SNAP_DEGREES = 5;
 const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
 const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
+const DEBOUNCE_TIMEOUT = 50;
 
 var $canvas;
 var gl;
@@ -102,6 +102,10 @@ function RubiksCube(data) {
         };
     }
 
+    this.isRotating = function() {
+        return this.rotation.cubes !== null && this.rotation.axis !== null
+    }
+
     this.init();
 
     this.draw = function() {
@@ -173,14 +177,17 @@ function RubiksCube(data) {
     }
 
     this.setRotationSpeed = function(initIntersection, newIntersection, axis, timeDelta) {
-        if (!initIntersection || !newIntersection) {
-            return 0;
+        if (!initIntersection || !newIntersection || !axis) {
+            return;
         }
 
         const direction = glMatrix.vec3.cross(glMatrix.vec3.create(), axis, initIntersection.normal);
         const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
+
         const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
-        this.rotation.speed = Math.abs(dotProduct) > 0.75 ? dotProduct / timeDelta : 0;
+        if (Math.abs(dotProduct) > 0.85) {
+           this.rotation.speed = dotProduct / timeDelta;
+        }
     }
 
     this.select = function(x, y) {
@@ -192,41 +199,59 @@ function RubiksCube(data) {
      * Rotates this.rotation.cubes around this.rotation.axis by DEGREES.
      */
     this.startRotate = function(x, y, timestamp) {
+        if (this.isRotating()) {
+            return;
+        }
+
         const start = this.select(x, y)
         if (!start) {
             return;
         }
 
+        let debounce = false;
         $canvas.mousemove((event) => {
-            const end = this.select(event.pageX, event.pageY);
+            if (debounce) {
+                return;
+            }
+
             const delta = event.timeStamp - timestamp;
+            if (delta < DEBOUNCE_TIMEOUT) {
+                return;
+            }
+
+            const end = this.select(event.pageX, event.pageY);
 
             // Set this.rotation.axis and this.rotation.cubes before starting a rotation.
             if (this.rotation.angle === 0)  {
                 this.setRotationAxis(start, end);
                 this.setRotatedCubes(start, end, this.rotation.axis);
-                if (!this.rotation.cubes || !this.rotation.axis) {
-                    return;
-                }
             }
 
             this.setRotationSpeed(start, end, this.rotation.axis, delta);
+            debounce = true;
+
+            window.setTimeout(() => {
+                debounce = false;
+            }, DEBOUNCE_TIMEOUT);
         });
     }
 
     this.rotate = function(timeDelta) {
-        if (!this.rotation.axis || !this.rotation.cubes) {
+        if (!this.isRotating()) {
             return;
         }
 
         // A rotation has been completed. Stop rotating.
-        if (this.rotation.angle === 90) {
-            this.initRotation();
+        if (Math.abs(this.rotation.angle) === 90) {
+            window.setTimeout(() => {
+                this.initRotation();
+            }, DEBOUNCE_TIMEOUT);
             return;
         }
 
+        // Convert radians to degrees.
         let degrees = this.rotation.speed * timeDelta * 180 / Math.PI;
-        if (this.rotation.angle + degrees >= 90) {
+        if (Math.abs(this.rotation.angle + degrees) >= 90) {
             degrees = 90 - this.rotation.angle;
         }
         this.rotation.angle += degrees;
