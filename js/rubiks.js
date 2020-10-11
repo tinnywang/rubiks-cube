@@ -26,17 +26,11 @@ var shaderProgram;
 
 var leftMouseDown = false;
 var rightMouseDown = false;
-var xInitRight;
-var yInitRight;
-var xNewRight;
-var yNewRight;
 var isScrambling = false;
 
 var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
 var rotationMatrix = glMatrix.mat4.create();
-
-var startTime = 0;
 
 function RubiksCube(data) {
     this.data = data;
@@ -460,14 +454,19 @@ function initShaders() {
 
 // timestamp is a DOMHighResTimeStamp.
 // See https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame.
-function drawScene(timestamp) {
-    const timeDelta = timestamp - startTime;
+function drawScene() {
+    let startTime = 0;
 
-    rubiksCube.draw();
-    rubiksCube.rotate(timeDelta);
-    requestAnimationFrame(drawScene);
+    const animate = function(timestamp) {
+        const timeDelta = timestamp - startTime;
 
-    startTime = timestamp;
+        rubiksCube.draw();
+        rubiksCube.rotate(timeDelta);
+        requestAnimationFrame(animate);
+
+        startTime = timestamp;
+    }
+    return animate;
 }
 
 function start(data) {
@@ -484,7 +483,7 @@ function start(data) {
 
         rubiksCube = new RubiksCube(data);
         perspectiveView();
-        drawScene(performance.now());
+        drawScene()(performance.now());
     }
 }
 
@@ -504,29 +503,6 @@ function setMatrixUniforms() {
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
 
-/*
-function rotate(event) {
-    if (leftMouseDown) {
-        newIntersection = rubiksCube.select(event.pageX, event.pageY);
-        if (newIntersection) {
-            // rubiksCube.setRotationAxis(initIntersection, newIntersection);
-            // rubiksCube.setRotatedCubes(initIntersection, newIntersection, rubiksCube.rotation.axis);
-            // isRotating = !!(rubiksCube.rotation.cubes && rubiksCube.rotation.axis);
-        }
-    } else if (rightMouseDown) {
-        xNewRight = event.pageX;
-        yNewRight = event.pageY;
-        const delta_x = (xNewRight - xInitRight) / 50;
-        const delta_y = (yNewRight - yInitRight) / 50;
-        const axis = [delta_y, delta_x, 0];
-        const degrees = Math.sqrt(delta_x * delta_x + delta_y * delta_y);
-        const newRotationMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
-        glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
-    }
-}
-*/
-
 function startRotate(event) {
     // The Rubik's cube can be rotated with right mouse while it's being scrambled, but
     // individual layers of the cube cannot be rotated with left mouse.
@@ -535,8 +511,6 @@ function startRotate(event) {
         rubiksCube.startRotate(event.pageX, event.pageY, event.timeStamp);
     } else if (isRightMouse(event)) {
         rightMouseDown = true;
-        xInitRight = event.pageX;
-        yInitRight = event.pageY;
     }
 }
 
