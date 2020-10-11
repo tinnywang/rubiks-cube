@@ -103,7 +103,9 @@ function RubiksCube(data) {
     }
 
     this.isRotating = function() {
-        return this.rotation.cubes !== null && this.rotation.axis !== null
+        return this.rotation.cubes !== null &&
+            this.rotation.axis !== null &&
+            this.rotation.speed !== 0;
     }
 
     this.init();
@@ -243,9 +245,8 @@ function RubiksCube(data) {
 
         // A rotation has been completed. Stop rotating.
         if (Math.abs(this.rotation.angle) === 90) {
-            window.setTimeout(() => {
-                this.initRotation();
-            }, DEBOUNCE_TIMEOUT);
+            this.initRotation();
+            this.endRotate();
             return;
         }
 
