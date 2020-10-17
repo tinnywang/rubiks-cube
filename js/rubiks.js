@@ -179,7 +179,7 @@ function RubiksCube(data) {
         const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
 
         const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
-        if (Math.abs(dotProduct) > 0.85) {
+        if (Math.abs(dotProduct) > 0.9) {
             this.rotation.speed = glMatrix.vec3.length(movement) / timeDelta;
         }
     }
@@ -234,12 +234,11 @@ function RubiksCube(data) {
         }
 
         let degrees = this.rotation.speed * timeDelta * 180 / Math.PI;
-        if (leftMouseDown && this.rotation.cubes) {
+        // Progress the cube layer rotation that was started with a left mouse movement.
+        if (this.rotation.cubes) {
             // A rotation has been completed. Stop rotating.
-            if (Math.abs(this.rotation.angle) === 90) {
-                this.initRotation();
+            if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
                 this.endRotate();
-                leftMouseDown = false;
                 return;
             }
 
@@ -265,9 +264,11 @@ function RubiksCube(data) {
 
     this.endRotate = function() {
         $canvas.off('mousemove');
+        this.initRotation();
 
-        if (rightMouseDown) {
-            this.initRotation();
+        if (leftMouseDown) {
+            leftMouseDown = false;
+        } else if (rightMouseDown) {
             rightMouseDown = false;
         }
     }
@@ -290,11 +291,7 @@ function RubiksCube(data) {
 
         glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
-
-        this.rotation.axis = axis;
-        if (leftMouseDown  && glMatrix.vec3.length(axis) !== 1) {
-            this.rotation.axis = null;
-        }
+        this.rotation.axis = glMatrix.vec3.length(axis) === 1 ? axis : null;
     }
 
     this.scramble = function() {
@@ -377,20 +374,19 @@ function Cube(rubiksCube, coordinates, data) {
 }
 
 function debounce(f) {
-    let shouldDebounce = false;
+    let shouldDebounce = true;
     let startTime = performance.now();
 
     return (event) => {
-        if (shouldDebounce || event.timeStamp - startTime < DEBOUNCE_TIMEOUT) {
+        if (shouldDebounce) {
+            window.setTimeout(() => {
+                shouldDebounce = false;
+            }, DEBOUNCE_TIMEOUT);
             return;
         }
 
         f(event);
-
         shouldDebounce = true;
-        window.setTimeout(() => {
-            shouldDebounce = false;
-        }, DEBOUNCE_TIMEOUT);
     }
 }
 
@@ -533,8 +529,11 @@ function setMatrixUniforms() {
 }
 
 function startRotate(event) {
-    // The Rubik's cube can be rotated with right mouse while it's being scrambled, but
-    // individual layers of the cube cannot be rotated with left mouse.
+    if (leftMouseDown || rightMouseDown) {
+        return;
+    }
+
+    // You can either rotate a cube layer or the entire cube, but not both simultaneously.
     if (isLeftMouse(event)) {
         leftMouseDown = true;
     } else if (isRightMouse(event)) {
@@ -544,7 +543,9 @@ function startRotate(event) {
 }
 
 function endRotate(event) {
-    rubiksCube.endRotate();
+    window.setTimeout(() => {
+        rubiksCube.endRotate();
+    }, DEBOUNCE_TIMEOUT);
 }
 
 function isLeftMouse(event) {
