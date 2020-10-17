@@ -97,7 +97,8 @@ function RubiksCube(data) {
     }
 
     this.isRotating = function() {
-        return this.rotation.axis !== null && this.rotation.speed !== 0;
+        const isRotating = this.rotation.axis && this.rotation.speed !== 0;
+        return rightMouseDown ? isRotating : isRotating && this.rotation.cubes;
     }
 
     this.init();
@@ -241,7 +242,7 @@ function RubiksCube(data) {
 
         // Continue the cube layer rotation that was started with left mouse,
         // even if left mouse is no longer being pressed.
-        if (!rightMouseDown && this.rotation.cubes) {
+        if (this.rotation.cubes) {
             // A rotation has been completed. Stop rotating.
             if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
                 this.endRotate();
@@ -272,7 +273,7 @@ function RubiksCube(data) {
         $canvas.off('mousemove');
 
         if (leftMouseDown) {
-            leftMouseDown = true;
+            leftMouseDown = false;
         }
         if (rightMouseDown) {
             rightMouseDown = false;
