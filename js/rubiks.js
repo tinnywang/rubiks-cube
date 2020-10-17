@@ -192,20 +192,23 @@ function RubiksCube(data) {
     /*
      * Rotates this.rotation.cubes around this.rotation.axis by DEGREES.
      */
-    this.startRotate = function(x, y, timestamp) {
+    this.startRotate = function(event) {
         if (this.isRotating()) {
             return;
         }
 
-        let start = this.select(x, y);
+        leftMouseDown = isLeftMouse(event);
+        rightMouseDown = isRightMouse(event);
+
+        const start = this.select(event.pageX, event.pageY);
         if (!start) {
             return;
         }
 
-        $canvas.mousemove(debounce((event) => {
-            const delta = event.timeStamp - timestamp;
+        $canvas.mousemove(debounce((ev) => {
+            const delta = ev.timeStamp - event.timeStamp;
             if (leftMouseDown) {
-                const end = this.select(event.pageX, event.pageY);
+                const end = this.select(ev.pageX, ev.pageY);
                 if (!end) {
                     return;
                 }
@@ -217,9 +220,9 @@ function RubiksCube(data) {
                 }
                 this.setRotationSpeed(start, end, this.rotation.axis, delta);
             } else if (rightMouseDown) {
-                const deltaTime = event.timeStamp - timestamp;
-                const deltaX = event.pageX - x;
-                const deltaY = event.pageY - y;
+                const deltaTime = ev.timeStamp - event.timeStamp;
+                const deltaX = ev.pageX - event.pageX;
+                const deltaY = ev.pageY - event.pageY;
                 const degrees = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
                 this.rotation.speed = glMatrix.glMatrix.toRadian(degrees) / deltaTime;
@@ -235,10 +238,11 @@ function RubiksCube(data) {
 
         let degrees = this.rotation.speed * timeDelta * 180 / Math.PI;
         // Progress the cube layer rotation that was started with a left mouse movement.
-        if (this.rotation.cubes) {
+        if (!rightMouseDown && this.rotation.cubes) {
             // A rotation has been completed. Stop rotating.
             if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
                 this.endRotate();
+                this.initRotation();
                 return;
             }
 
@@ -264,12 +268,13 @@ function RubiksCube(data) {
 
     this.endRotate = function() {
         $canvas.off('mousemove');
-        this.initRotation();
 
         if (leftMouseDown) {
-            leftMouseDown = false;
-        } else if (rightMouseDown) {
+            leftMouseDown = true;
+        }
+        if (rightMouseDown) {
             rightMouseDown = false;
+            this.initRotation();
         }
     }
 
@@ -529,23 +534,12 @@ function setMatrixUniforms() {
 }
 
 function startRotate(event) {
-    if (leftMouseDown || rightMouseDown) {
-        return;
-    }
-
     // You can either rotate a cube layer or the entire cube, but not both simultaneously.
-    if (isLeftMouse(event)) {
-        leftMouseDown = true;
-    } else if (isRightMouse(event)) {
-        rightMouseDown = true;
-    }
-    rubiksCube.startRotate(event.pageX, event.pageY, event.timeStamp);
+    rubiksCube.startRotate(event);
 }
 
 function endRotate(event) {
-    window.setTimeout(() => {
-        rubiksCube.endRotate();
-    }, DEBOUNCE_TIMEOUT);
+    rubiksCube.endRotate();
 }
 
 function isLeftMouse(event) {
