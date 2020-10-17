@@ -97,9 +97,8 @@ function RubiksCube(data) {
     }
 
     this.isRotating = function() {
-        return this.rotation.cubes !== null &&
-            this.rotation.axis !== null &&
-            this.rotation.speed !== 0;
+        const isRotating = this.rotation.axis && this.rotation.speed !== 0;
+        return rightMouseDown ? isRotating : isRotating && this.rotation.cubes;
     }
 
     this.init();
@@ -181,8 +180,8 @@ function RubiksCube(data) {
         const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
 
         const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
-        if (Math.abs(dotProduct) > 0.85) {
-           this.rotation.speed = dotProduct / timeDelta;
+        if (Math.abs(dotProduct) > 0.9) {
+            this.rotation.speed = glMatrix.vec3.length(movement) / timeDelta;
         }
     }
 
@@ -194,42 +193,43 @@ function RubiksCube(data) {
     /*
      * Rotates this.rotation.cubes around this.rotation.axis by DEGREES.
      */
-    this.startRotate = function(x, y, timestamp) {
+    this.startRotate = function(event) {
         if (this.isRotating()) {
             return;
         }
 
-        const start = this.select(x, y)
+        leftMouseDown = isLeftMouse(event);
+        rightMouseDown = isRightMouse(event);
+
+        const start = this.select(event.pageX, event.pageY);
         if (!start) {
             return;
         }
 
-        let debounce = false;
-        $canvas.mousemove((event) => {
-            if (debounce) {
-                return;
+        $canvas.mousemove(debounce((ev) => {
+            const delta = ev.timeStamp - event.timeStamp;
+            if (leftMouseDown) {
+                const end = this.select(ev.pageX, ev.pageY);
+                if (!end) {
+                    return;
+                }
+
+                // Set this.rotation.axis and this.rotation.cubes before starting a rotation.
+                if (this.rotation.angle === 0)  {
+                    this.setRotationAxis(start, end);
+                    this.setRotatedCubes(start, end, this.rotation.axis);
+                }
+                this.setRotationSpeed(start, end, this.rotation.axis, delta);
+            } else if (rightMouseDown) {
+                const deltaTime = ev.timeStamp - event.timeStamp;
+                const deltaX = ev.pageX - event.pageX;
+                const deltaY = ev.pageY - event.pageY;
+                const degrees = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                this.rotation.speed = glMatrix.glMatrix.toRadian(degrees) / deltaTime;
+                this.rotation.axis = [deltaY, deltaX, 0];
             }
-
-            const delta = event.timeStamp - timestamp;
-            if (delta < DEBOUNCE_TIMEOUT) {
-                return;
-            }
-
-            const end = this.select(event.pageX, event.pageY);
-
-            // Set this.rotation.axis and this.rotation.cubes before starting a rotation.
-            if (this.rotation.angle === 0)  {
-                this.setRotationAxis(start, end);
-                this.setRotatedCubes(start, end, this.rotation.axis);
-            }
-
-            this.setRotationSpeed(start, end, this.rotation.axis, delta);
-            debounce = true;
-
-            window.setTimeout(() => {
-                debounce = false;
-            }, DEBOUNCE_TIMEOUT);
-        });
+        }));
     }
 
     this.rotate = function(timeDelta) {
@@ -237,31 +237,48 @@ function RubiksCube(data) {
             return;
         }
 
-        // A rotation has been completed. Stop rotating.
-        if (Math.abs(this.rotation.angle) === 90) {
-            this.initRotation();
-            this.endRotate();
-            return;
-        }
-
         // Convert radians to degrees.
         let degrees = this.rotation.speed * timeDelta * 180 / Math.PI;
-        if (Math.abs(this.rotation.angle + degrees) >= 90) {
-            degrees = 90 - this.rotation.angle;
-        }
-        this.rotation.angle += degrees;
 
-        const newRotationMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), this.rotation.axis);
+        // Continue the cube layer rotation that was started with left mouse,
+        // even if left mouse is no longer being pressed.
+        if (this.rotation.cubes) {
+            // A rotation has been completed. Stop rotating.
+            if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
+                this.endRotate();
+                this.initRotation();
+                return;
+            }
 
-        for (let cube of this.rotation.cubes) {
-            cube.rotate(newRotationMatrix);
+            if (Math.abs(this.rotation.angle + degrees) >= 90) {
+                degrees = 90 - this.rotation.angle;
+            }
+            this.rotation.angle += degrees;
+
+            const newRotationMatrix = glMatrix.mat4.create();
+            glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), this.rotation.axis);
+
+            for (let cube of this.rotation.cubes) {
+                cube.rotate(newRotationMatrix);
+            }
+        } else if (rightMouseDown) {
+            const axis = this.rotation.axis;
+            const newRotationMatrix = glMatrix.mat4.create();
+            glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
+            glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
         }
     }
 
     this.endRotate = function() {
-        leftMouseDown = false;
         $canvas.off('mousemove');
+
+        if (leftMouseDown) {
+            leftMouseDown = false;
+        }
+        if (rightMouseDown) {
+            rightMouseDown = false;
+            this.initRotation();
+        }
     }
 
     this.setRotationAxis = function(initIntersection, newIntersection) {
@@ -282,7 +299,6 @@ function RubiksCube(data) {
 
         glMatrix.vec3.normalize(axis, axis);
         glMatrix.vec3.round(axis, axis);
-
         this.rotation.axis = glMatrix.vec3.length(axis) === 1 ? axis : null;
     }
 
@@ -362,6 +378,23 @@ function Cube(rubiksCube, coordinates, data) {
         }
 
         glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
+    }
+}
+
+function debounce(f) {
+    let shouldDebounce = true;
+    let startTime = performance.now();
+
+    return (event) => {
+        if (shouldDebounce) {
+            window.setTimeout(() => {
+                shouldDebounce = false;
+            }, DEBOUNCE_TIMEOUT);
+            return;
+        }
+
+        f(event);
+        shouldDebounce = true;
     }
 }
 
@@ -503,24 +536,6 @@ function setMatrixUniforms() {
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
 
-function startRotate(event) {
-    // The Rubik's cube can be rotated with right mouse while it's being scrambled, but
-    // individual layers of the cube cannot be rotated with left mouse.
-    if (isLeftMouse(event)) {
-        leftMouseDown = true;
-        rubiksCube.startRotate(event.pageX, event.pageY, event.timeStamp);
-    } else if (isRightMouse(event)) {
-        rightMouseDown = true;
-    }
-}
-
-function endRotate(event) {
-    if (isLeftMouse(event)) {
-        rubiksCube.endRotate();
-    }
-    rightMouseDown = false;
-}
-
 function isLeftMouse(event) {
     return event.button === LEFT_MOUSE && !event.ctrlKey
 }
@@ -608,9 +623,9 @@ $(document).ready(function() {
     $.get(`${base}/models/rubiks-cube.json`, function(data) {
         start(data[0]);
         $canvas.bind('contextmenu', function(e) { return false; });
-        $canvas.mousedown(startRotate);
-        $canvas.mouseup(endRotate);
-        $canvas.mouseout(endRotate);
+        $canvas.mousedown(rubiksCube.startRotate.bind(rubiksCube));
+        $canvas.mouseup(rubiksCube.endRotate.bind(rubiksCube));
+        $canvas.mouseout(rubiksCube.endRotate.bind(rubiksCube));
         $('body').keypress(togglePerspective);
     });
 });
