@@ -236,8 +236,11 @@ function RubiksCube(data) {
             return;
         }
 
+        // Convert radians to degrees.
         let degrees = this.rotation.speed * timeDelta * 180 / Math.PI;
-        // Progress the cube layer rotation that was started with a left mouse movement.
+
+        // Continue the cube layer rotation that was started with left mouse,
+        // even if left mouse is no longer being pressed.
         if (!rightMouseDown && this.rotation.cubes) {
             // A rotation has been completed. Stop rotating.
             if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
@@ -246,7 +249,6 @@ function RubiksCube(data) {
                 return;
             }
 
-            // Convert radians to degrees.
             if (Math.abs(this.rotation.angle + degrees) >= 90) {
                 degrees = 90 - this.rotation.angle;
             }
@@ -533,15 +535,6 @@ function setMatrixUniforms() {
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
 
-function startRotate(event) {
-    // You can either rotate a cube layer or the entire cube, but not both simultaneously.
-    rubiksCube.startRotate(event);
-}
-
-function endRotate(event) {
-    rubiksCube.endRotate();
-}
-
 function isLeftMouse(event) {
     return event.button === LEFT_MOUSE && !event.ctrlKey
 }
@@ -629,9 +622,9 @@ $(document).ready(function() {
     $.get(`${base}/models/rubiks-cube.json`, function(data) {
         start(data[0]);
         $canvas.bind('contextmenu', function(e) { return false; });
-        $canvas.mousedown(startRotate);
-        $canvas.mouseup(endRotate);
-        $canvas.mouseout(endRotate);
+        $canvas.mousedown(rubiksCube.startRotate.bind(rubiksCube));
+        $canvas.mouseup(rubiksCube.endRotate.bind(rubiksCube));
+        $canvas.mouseout(rubiksCube.endRotate.bind(rubiksCube));
         $('body').keypress(togglePerspective);
     });
 });
