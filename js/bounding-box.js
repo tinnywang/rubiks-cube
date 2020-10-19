@@ -101,9 +101,9 @@ function Plane(p0, p1, p2) {
     this.normal = glMatrix.vec3.cross(glMatrix.vec3.create(), this.p01, this.p02);
 
     this.randomPoint = function() {
-        return glMatrix.vec3.add( glMatrix.vec3.create(),
-            glMatrix.vec3.scale(glMatrix.vec3.create(), this.p01, Math.random()),
-            glMatrix.vec3.scale(glMatrix.vec3.create(), this.p02, Math.random()),
-        )
+        const point = glMatrix.vec3.copy(glMatrix.vec3.create(), p0);
+        glMatrix.vec3.add(point, point, glMatrix.vec3.scale(glMatrix.vec3.create(), this.p01, Math.random()));
+        glMatrix.vec3.add(point, point, glMatrix.vec3.scale(glMatrix.vec3.create(), this.p02, Math.random()));
+        return point;
     }
 }

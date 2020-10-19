@@ -26,7 +26,6 @@ var shaderProgram;
 
 var leftMouseDown = false;
 var rightMouseDown = false;
-var isScrambling = false;
 
 var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
@@ -97,8 +96,8 @@ function RubiksCube(data) {
     }
 
     this.isRotating = function() {
-        const isRotating = this.rotation.axis && this.rotation.speed !== 0;
-        return rightMouseDown ? isRotating : isRotating && this.rotation.cubes;
+        const isRotating = !!this.rotation.axis && this.rotation.speed !== 0;
+        return rightMouseDown ? isRotating : isRotating && !!this.rotation.cubes;
     }
 
     this.init();
@@ -247,6 +246,10 @@ function RubiksCube(data) {
             if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
                 this.endRotate();
                 this.initRotation();
+
+                if (this.scrambleCycles > 0) {
+                    this.scramble();
+                }
                 return;
             }
 
@@ -304,8 +307,7 @@ function RubiksCube(data) {
 
     this.scramble = function() {
         if (this.scrambleCycles === 0) {
-            isRotating = false;
-            isScrambling = false;
+            return;
         } else {
             const plane = this.boundingBox.randomPlane();
             const initIntersection = {
@@ -316,15 +318,12 @@ function RubiksCube(data) {
                 point: plane.randomPoint(),
                 normal: plane.normal,
             }
+
             this.setRotationAxis(initIntersection, newIntersection);
             this.setRotatedCubes(initIntersection, newIntersection, this.rotation.axis);
+            this.rotation.speed = 0.005;
 
-            if (!this.rotation.axis || !this.rotation.cubes) {
-                this.scramble();
-                return;
-            }
-            isRotating = true;
-            this.scrambleCycles--;
+            this.isRotating() ? this.scrambleCycles-- : this.scramble();
         }
     }
 }
@@ -607,8 +606,7 @@ function togglePerspective(event) {
 }
 
 function scramble() {
-    if (!isScrambling) {
-        isScrambling = true;
+    if (rubiksCube.scrambleCycles === 0) {
         rubiksCube.scrambleCycles = Math.ceil(Math.random() * 10 + 10); // an integer between 10 and 20
         rubiksCube.scramble();
     }
