@@ -233,7 +233,7 @@ function RubiksCube(data) {
                 this.rotation.speed = glMatrix.glMatrix.toRadian(degrees) / deltaTime;
                 this.rotation.axis = [deltaY, deltaX, 0];
             }
-        }));
+        }, DEBOUNCE_TIMEOUT));
     }
 
     /*
@@ -391,7 +391,7 @@ function Cube(rubiksCube, coordinates, data) {
     }
 }
 
-function debounce(f) {
+function debounce(f, timeout) {
     let shouldDebounce = true;
     let startTime = performance.now();
 
@@ -399,7 +399,7 @@ function debounce(f) {
         if (shouldDebounce) {
             window.setTimeout(() => {
                 shouldDebounce = false;
-            }, DEBOUNCE_TIMEOUT);
+            }, timeout);
             return;
         }
 
