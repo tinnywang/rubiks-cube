@@ -126,7 +126,9 @@ function RubiksCube(data) {
     }
 
     /*
-     * Sets this.rotation.cubes to an array of cubes that are in the same plane as initCube, newCube, and axis.
+     * Sets this.rotation.cubes to an array of cubes that are in the plane that
+     * 1. contains `initIntersection` and `newIntersection`
+     * 2. is perpendicular to `axis`
      */
     this.setRotatedCubes = function(initIntersection, newIntersection, axis) {
         if (!initIntersection || !newIntersection || !axis) {
@@ -170,6 +172,9 @@ function RubiksCube(data) {
         return lower < value && value < upper;
     }
 
+    /*
+     * Sets this.rotation.speed to the angular displacement over `timeDelta`, measured in radians per millisecond.
+     */
     this.setRotationSpeed = function(initIntersection, newIntersection, axis, timeDelta) {
         if (!initIntersection || !newIntersection || !axis) {
             return;
@@ -190,7 +195,7 @@ function RubiksCube(data) {
     }
 
     /*
-     * Rotates this.rotation.cubes around this.rotation.axis by DEGREES.
+     * Starts a rotation by registering a `mousemove` event handler and intializing rotation state.
      */
     this.startRotate = function(event) {
         if (this.isRotating()) {
@@ -231,6 +236,9 @@ function RubiksCube(data) {
         }));
     }
 
+    /*
+     * Rotates the Rubik's cube or a cube layer by the angle of rotation.
+     */
     this.rotate = function(timeDelta) {
         if (!this.isRotating()) {
             return;
@@ -272,6 +280,9 @@ function RubiksCube(data) {
         }
     }
 
+    /*
+     * Cleans up rotation state after left/right mouse has been released.
+     */
     this.endRotate = function() {
         $canvas.off('mousemove');
 
