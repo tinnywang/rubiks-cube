@@ -41,7 +41,7 @@ function RubiksCube(data) {
         gl,
         projectionMatrix,
         modelViewMatrix,
-        EYE,
+        EYE
     );
 
     this.init = function() {
@@ -189,7 +189,7 @@ function RubiksCube(data) {
         }
     }
 
-    this.select = function(x, y) {
+    this.select = function(event) {
         const offset = $canvas.offset();
         return this.boundingBox.intersection(event.pageX - offset.left, event.pageY - offset.top);
     }
@@ -205,7 +205,7 @@ function RubiksCube(data) {
         leftMouseDown = isLeftMouse(event);
         rightMouseDown = isRightMouse(event);
 
-        const start = this.select(event.pageX, event.pageY);
+        const start = this.select(event);
         if (!start) {
             return;
         }
@@ -213,7 +213,7 @@ function RubiksCube(data) {
         $canvas.mousemove(debounce((ev) => {
             const delta = ev.timeStamp - event.timeStamp;
             if (leftMouseDown) {
-                const end = this.select(ev.pageX, ev.pageY);
+                const end = this.select(ev);
                 if (!end) {
                     return;
                 }
@@ -393,7 +393,6 @@ function Cube(rubiksCube, coordinates, data) {
 
 function debounce(f, timeout) {
     let shouldDebounce = true;
-    let startTime = performance.now();
 
     return (event) => {
         if (shouldDebounce) {
@@ -631,7 +630,7 @@ $(document).ready(function() {
 
     $.get(`${base}/models/rubiks-cube.json`, function(data) {
         start(data[0]);
-        $canvas.bind('contextmenu', function(e) { return false; });
+        $canvas.bind('contextmenu', function() { return false; });
         $canvas.mousedown(rubiksCube.startRotate.bind(rubiksCube));
         $canvas.mouseup(rubiksCube.endRotate.bind(rubiksCube));
         $canvas.mouseout(rubiksCube.endRotate.bind(rubiksCube));

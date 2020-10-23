@@ -1,5 +1,3 @@
-const Z_INDEX = 2;
-
 // The bounding box is a 6x6x6 cube, centered at the origin, that inscribes the Rubik's cube.
 // Each face of the bounding box corresponds to a side of the Rubik's cube.
 function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
@@ -35,11 +33,11 @@ function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
             const t = glMatrix.vec3.dot(plane.normal, p0Start) / denominator;
             const u = glMatrix.vec3.dot(
                glMatrix.vec3.cross(glMatrix.vec3.create(), plane.p02, ray),
-               p0Start,
+               p0Start
             ) / denominator;
             const v = glMatrix.vec3.dot(
                glMatrix.vec3.cross(glMatrix.vec3.create(), ray, plane.p01),
-               p0Start,
+               p0Start
             ) / denominator;
 
             if (0 <= u && u <= 1 && 0 <= v && v <= 1) {
@@ -59,7 +57,6 @@ function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
                 const distance = glMatrix.vec3.distance(this.eye, glMatrix.vec3.fromValues(...worldPoint));
                 if (distance < minDistance) {
                     minDistance = distance;
-                    intersectionPoint = point;
                     intersection = {
                         point: point,
                         normal: glMatrix.vec3.normalize(glMatrix.vec3.create(), plane.normal),
