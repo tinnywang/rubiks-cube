@@ -1,6 +1,43 @@
-import { $ } from 'jquery';
-import { config } from './modules/config.js';
-import { EYE, LIGHTS, RubiksCube, togglePerspective } from './modules/rubiks.js';
+import 'https://code.jquery.com/jquery-3.5.1.min.js';
+import { EYE, LIGHTS, perspectiveView, RubiksCube, scramble, togglePerspective } from './modules/rubiks.js';
+
+const $ = window.$;
+
+function initCanvas() {
+    const $canvas = $('#glcanvas');
+    const canvas = $canvas[0];
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+
+    window.onresize = function () {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    };
+
+    return $canvas
+}
+
+function initWebGL(canvas) {
+    if (!window.WebGLRenderingContext) {
+        console.log("Your browser doesn't support WebGL.")
+        return null;
+    }
+
+    const gl = canvas.getContext('webgl', {preserveDrawingBuffer: true}) || canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
+    if (!gl) {
+        console.log("Your browser supports WebGL, but initialization failed.");
+        return null;
+    }
+
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    return gl;
+}
 
 function initShaders(gl) {
     const fragmentShader = getShader(gl, 'fragmentShader');
@@ -75,28 +112,6 @@ function getShader(gl, id) {
     return shader;
 }
 
-function initWebGL(canvas) {
-    if (!window.WebGLRenderingContext) {
-        console.log("Your browser doesn't support WebGL.")
-        return null;
-    }
-
-    const gl = canvas.getContext('webgl', {preserveDrawingBuffer: true}) || canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
-    if (!gl) {
-        console.log("Your browser supports WebGL, but initialization failed.");
-        return null;
-    }
-
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
-    gl.enable(gl.CULL_FACE);
-    gl.cullFace(gl.BACK);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    return gl;
-}
-
 // timestamp is a DOMHighResTimeStamp.
 // See https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame.
 function drawScene(rubiksCube) {
@@ -116,20 +131,14 @@ function drawScene(rubiksCube) {
 }
 
 $(document).ready(function() {
-    const $canvas = $('#glcanvas');
-    $canvas.width = $canvas.clientWidth;
-    $canvas.height = $canvas.clientHeight;
-    window.onresize = function () {
-        $canvas.width = $canvas.clientWidth;
-        $canvas.height = $canvas.clientHeight;
-    };
+    const $canvas = initCanvas();
     const gl = initWebGL($canvas[0]);
     const shaderProgram = initShaders(gl);
     const pathname = location.pathname;
     const base = pathname.substring(0, pathname.lastIndexOf('/'));
 
     $.get(`${base}/models/rubiks-cube.json`, function(data) {
-        const rubiksCube = new RubiksCube(data, gl, shaderProgram, $canvas);
+        const rubiksCube = new RubiksCube(data[0], gl, shaderProgram, $canvas);
 
         $canvas.bind('contextmenu', function() { return false; });
         $canvas.mousedown(rubiksCube.startRotate.bind(rubiksCube));
@@ -138,6 +147,7 @@ $(document).ready(function() {
         $('body').keypress(togglePerspective);
         $('#scramble').click(() => scramble(rubiksCube));
 
+        perspectiveView();
         drawScene(rubiksCube)(performance.now());
     });
 });

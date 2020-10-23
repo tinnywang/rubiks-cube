@@ -1,5 +1,5 @@
-import { glMatrix, mat4, vec3, mat3 } from './modules/gl-matrix-min.js';
-import BoundingBox from './modules/bouding-box.js';
+import './gl-matrix-min.js';
+import { BoundingBox } from './bounding-box.js';
 
 const EYE = [0, 0, 20];
 const CENTER = [0, 0, 0];
@@ -14,8 +14,8 @@ const LIGHTS = [
         intensity: 1,
     },
 ];
-const VIEW_MATRIX = mat4.lookAt(mat4.create(), EYE, CENTER, UP);
-const FOV = glMatrix.toRadian(70);
+const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
+const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
 const Z_FAR = 100;
 const LEFT_MOUSE = 0;
@@ -25,11 +25,12 @@ const DEBOUNCE_TIMEOUT = 50;
 var leftMouseDown = false;
 var rightMouseDown = false;
 
-var modelViewMatrix = mat4.create();
-var projectionMatrix = mat4.create();
-var rotationMatrix = mat4.create();
+var modelViewMatrix = glMatrix.mat4.create();
+var projectionMatrix = glMatrix.mat4.create();
+var rotationMatrix = glMatrix.mat4.create();
 
 function RubiksCube(data, gl, shaderProgram, $canvas) {
+    this.data = data;
     this.buffers = null;
     this.rotation = null;
     this.scrambleCycles = 0;
@@ -46,7 +47,7 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
                 this.cubes[r][g] = new Array(3);
                 for (let b = 0; b < 3; b++) {
                     // Each cube has dimensions 2x2x2 units.
-                    const coordinates = vec3.fromValues(2 * (r - 1), 2 * (g - 1), 2 * (b - 1));
+                    const coordinates = glMatrix.vec3.fromValues(2 * (r - 1), 2 * (g - 1), 2 * (b - 1));
                     const cube = new Cube(this, coordinates, data, gl, shaderProgram);
                     this.cubes[r][g][b] = cube;
                 }
@@ -81,7 +82,7 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
     this.initRotation = function() {
         this.rotation = {
             cubes: null, // an array of Cubes
-            axis: null,  // a vec3
+            axis: null,  // a glMatrix.vec3
             angle: 0,    // the total angle of rotation
             speed: 0,    // the rotational speed from the mouse movement
         };
@@ -99,14 +100,14 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.uniform1i(shaderProgram.lighting, 1);
 
-        mat4.perspective(
+        glMatrix.mat4.perspective(
             projectionMatrix,
             FOV,
             gl.drawingBufferWidth / gl.drawingBufferHeight,
             Z_NEAR,
             Z_FAR
         );
-        mat4.multiply(modelViewMatrix, VIEW_MATRIX, rotationMatrix);
+        glMatrix.mat4.multiply(modelViewMatrix, VIEW_MATRIX, rotationMatrix);
         for (let r = 0; r < 3; r++) {
             for (let g = 0; g < 3; g++) {
                 for (let b = 0; b < 3; b++) {
@@ -172,12 +173,12 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
             return;
         }
 
-        const direction = vec3.cross(vec3.create(), axis, initIntersection.normal);
-        const movement = vec3.subtract(vec3.create(), newIntersection.point, initIntersection.point);
+        const direction = glMatrix.vec3.cross(glMatrix.vec3.create(), axis, initIntersection.normal);
+        const movement = glMatrix.vec3.subtract(glMatrix.vec3.create(), newIntersection.point, initIntersection.point);
 
-        const dotProduct = vec3.dot(direction, vec3.normalize(vec3.create(), movement));
+        const dotProduct = glMatrix.vec3.dot(direction, glMatrix.vec3.normalize(glMatrix.vec3.create(), movement));
         if (Math.abs(dotProduct) > 0.9) {
-            this.rotation.speed = vec3.length(movement) / timeDelta;
+            this.rotation.speed = glMatrix.vec3.length(movement) / timeDelta;
         }
     }
 
@@ -222,7 +223,7 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
                 const deltaY = ev.pageY - event.pageY;
                 const degrees = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-                this.rotation.speed = glMatrix.toRadian(degrees) / deltaTime;
+                this.rotation.speed = glMatrix.glMatrix.toRadian(degrees) / deltaTime;
                 this.rotation.axis = [deltaY, deltaX, 0];
             }
         }, DEBOUNCE_TIMEOUT));
@@ -243,7 +244,7 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
         // even if left mouse is no longer being pressed.
         if (this.rotation.cubes) {
             // A rotation has been completed. Stop rotating.
-            if (glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
+            if (glMatrix.glMatrix.equals(Math.abs(this.rotation.angle), 90)) {
                 this.endRotate();
                 this.initRotation();
 
@@ -258,17 +259,17 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
             }
             this.rotation.angle += degrees;
 
-            const newRotationMatrix = mat4.create();
-            mat4.fromRotation(newRotationMatrix, glMatrix.toRadian(degrees), this.rotation.axis);
+            const newRotationMatrix = glMatrix.mat4.create();
+            glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), this.rotation.axis);
 
             for (let cube of this.rotation.cubes) {
                 cube.rotate(newRotationMatrix);
             }
         } else if (rightMouseDown) {
             const axis = this.rotation.axis;
-            const newRotationMatrix = mat4.create();
-            mat4.fromRotation(newRotationMatrix, glMatrix.toRadian(degrees), axis);
-            mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
+            const newRotationMatrix = glMatrix.mat4.create();
+            glMatrix.mat4.fromRotation(newRotationMatrix, glMatrix.glMatrix.toRadian(degrees), axis);
+            glMatrix.mat4.multiply(rotationMatrix, newRotationMatrix, rotationMatrix);
         }
     }
 
@@ -292,20 +293,20 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
             return;
         }
 
-        const axis = vec3.create();
+        const axis = glMatrix.vec3.create();
 
         // The selected stickers are on the same face of the Rubik's cube.
-        if (vec3.equals(initIntersection.normal, newIntersection.normal)) {
-            const direction = vec3.create();
-            vec3.subtract(direction, newIntersection.point, initIntersection.point);
-            vec3.cross(axis, initIntersection.normal, direction);
+        if (glMatrix.vec3.equals(initIntersection.normal, newIntersection.normal)) {
+            const direction = glMatrix.vec3.create();
+            glMatrix.vec3.subtract(direction, newIntersection.point, initIntersection.point);
+            glMatrix.vec3.cross(axis, initIntersection.normal, direction);
         } else {
-            vec3.cross(axis, initIntersection.normal, newIntersection.normal);
+            glMatrix.vec3.cross(axis, initIntersection.normal, newIntersection.normal);
         }
 
-        vec3.normalize(axis, axis);
-        vec3.round(axis, axis);
-        this.rotation.axis = vec3.length(axis) === 1 ? axis : null;
+        glMatrix.vec3.normalize(axis, axis);
+        glMatrix.vec3.round(axis, axis);
+        this.rotation.axis = glMatrix.vec3.length(axis) === 1 ? axis : null;
     }
 
     this.scramble = function() {
@@ -332,22 +333,22 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
 }
 
 function Cube(rubiksCube, coordinates, data, gl, shaderProgram) {
-    this.rotationMatrix = mat4.create();
+    this.rotationMatrix = glMatrix.mat4.create();
     this.coordinates = coordinates;
 
     this.rotate = function(newRotationMatrix) {
-        mat4.multiply(this.rotationMatrix, newRotationMatrix, this.rotationMatrix);
-        vec3.transformMat4(this.coordinates, this.coordinates, newRotationMatrix);
+        glMatrix.mat4.multiply(this.rotationMatrix, newRotationMatrix, this.rotationMatrix);
+        glMatrix.vec3.transformMat4(this.coordinates, this.coordinates, newRotationMatrix);
    }
 
     this.transform = function() {
-        mat4.translate(modelViewMatrix, modelViewMatrix, this.coordinates);
-        mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
+        glMatrix.mat4.translate(modelViewMatrix, modelViewMatrix, this.coordinates);
+        glMatrix.mat4.multiply(modelViewMatrix, modelViewMatrix, this.rotationMatrix);
     }
 
     this.draw = function() {
-        const mvMatrix = mat4.create();
-        mat4.copy(mvMatrix, modelViewMatrix);
+        const mvMatrix = glMatrix.mat4.create();
+        glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
         this.transform();
         setMatrixUniforms(gl, shaderProgram);
 
@@ -356,8 +357,8 @@ function Cube(rubiksCube, coordinates, data, gl, shaderProgram) {
             const material = faceGroup.material;
             // Blender doesn't seem to support per-object ambient colors or export the global ambient color,
             // so we compute our own ambient color as a darker version of the diffuse color.
-            const ambient = vec3.create();
-            vec3.scale(ambient, material.diffuse, 0.4);
+            const ambient = glMatrix.vec3.create();
+            glMatrix.vec3.scale(ambient, material.diffuse, 0.4);
             gl.uniform3fv(shaderProgram.ambient, ambient);
             gl.uniform3fv(shaderProgram.diffuse, material.diffuse);
             gl.uniform3fv(shaderProgram.specular, material.specular);
@@ -377,7 +378,7 @@ function Cube(rubiksCube, coordinates, data, gl, shaderProgram) {
             offset += faceGroup.vertex_indices.length * 2;
         }
 
-        mat4.copy(modelViewMatrix, mvMatrix);
+        glMatrix.mat4.copy(modelViewMatrix, mvMatrix);
     }
 }
 
@@ -404,11 +405,11 @@ function setMatrixUniforms(gl, shaderProgram) {
     const modelViewUniform = gl.getUniformLocation(shaderProgram, 'modelViewMatrix');
     gl.uniformMatrix4fv(modelViewUniform, false, modelViewMatrix);
 
-    const normalMatrix = mat4.create();
-    mat4.invert(normalMatrix, modelViewMatrix);
-    mat4.transpose(normalMatrix, normalMatrix);
-    const normalMatrix3 = mat3.create();
-    mat3.fromMat4(normalMatrix3, normalMatrix);
+    const normalMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.invert(normalMatrix, modelViewMatrix);
+    glMatrix.mat4.transpose(normalMatrix, normalMatrix);
+    const normalMatrix3 = glMatrix.mat3.create();
+    glMatrix.mat3.fromMat4(normalMatrix3, normalMatrix);
     const normalMatrixUniform = gl.getUniformLocation(shaderProgram, 'normalMatrix');
     gl.uniformMatrix3fv(normalMatrixUniform, false, normalMatrix3);
 }
@@ -422,39 +423,39 @@ function isRightMouse(event) {
 }
 
 function topView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.toRadian(90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
 }
 
 function bottomView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.toRadian(-90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
 }
 
 function leftView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.toRadian(-90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
 }
 
 function rightView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.toRadian(90));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
 }
 
 function frontView() {
-    mat4.identity(rotationMatrix);
-    mat4.identity(rotationMatrix);
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.identity(rotationMatrix);
 }
 
 function backView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.toRadian(180));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(180));
 }
 
 function perspectiveView() {
-    mat4.identity(rotationMatrix);
-    mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.toRadian(30));
-    mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.toRadian(45));
+    glMatrix.mat4.identity(rotationMatrix);
+    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
+    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
 }
 
 function togglePerspective(event) {
@@ -490,4 +491,4 @@ function scramble(rubiksCube) {
     }
 }
 
-export { EYE, LIGHTS, RubiksCube, scramble, togglePerspective };
+export { EYE, LIGHTS, perspectiveView, RubiksCube, scramble, togglePerspective };
