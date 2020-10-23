@@ -10,9 +10,7 @@
         <link rel="stylesheet" href="static/main.css">
         <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
         <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-        <script src="js/gl-matrix-min.js"></script>
-        <script src="js/bounding-box.js"></script>
-        <script src="js/rubiks.js"></script>
+        <script type="module" src="index.js"></script>
         <script id='fragmentShader' type='x-shader/x-fragment'>
             varying highp vec4 position;
             varying highp vec3 normal;
@@ -83,7 +81,7 @@
                     <div><span class='control'>E</span> for top view</div>
                     <div><span class='control'>Q</span> for bottom view</div>
                 </div>
-                <button type='button' class='btn btn-primary btn-lg' onclick='scramble()'>Scramble</button>
+                <button id='scramble' type='button' class='btn btn-primary btn-lg'>Scramble</button>
             </div>
             <div class='col-md-7 fill'>
                 <canvas id='glcanvas'>

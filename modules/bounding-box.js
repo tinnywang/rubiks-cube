@@ -3,7 +3,6 @@ import { mat4, vec3, vec4 } from './modules/gl-matrix-min.js';
 // The bounding box is a 6x6x6 cube, centered at the origin, that inscribes the Rubik's cube.
 // Each face of the bounding box corresponds to a side of the Rubik's cube.
 function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
-    this.gl = gl;
     this.projectionMatrix = projectionMatrix;
     this.modelViewMatrix = modelViewMatrix;
     this.eye = eye;
