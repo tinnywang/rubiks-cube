@@ -1,12 +1,13 @@
-const Z_INDEX = 2;
+import './gl-matrix-min.js';
+import { EYE } from './shader.js';
+
+const glMatrix = window.glMatrix;
 
 // The bounding box is a 6x6x6 cube, centered at the origin, that inscribes the Rubik's cube.
 // Each face of the bounding box corresponds to a side of the Rubik's cube.
-function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
-    this.gl = gl;
+function BoundingBox(gl, projectionMatrix, modelViewMatrix) {
     this.projectionMatrix = projectionMatrix;
     this.modelViewMatrix = modelViewMatrix;
-    this.eye = eye;
     this.planes = [
         new Plane([-3, -3, 3], [3, -3, 3], [-3, 3, 3]), // front
         new Plane([-3, -3, -3], [-3, 3, -3], [3, -3, -3]), // back
@@ -35,11 +36,11 @@ function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
             const t = glMatrix.vec3.dot(plane.normal, p0Start) / denominator;
             const u = glMatrix.vec3.dot(
                glMatrix.vec3.cross(glMatrix.vec3.create(), plane.p02, ray),
-               p0Start,
+               p0Start
             ) / denominator;
             const v = glMatrix.vec3.dot(
                glMatrix.vec3.cross(glMatrix.vec3.create(), ray, plane.p01),
-               p0Start,
+               p0Start
             ) / denominator;
 
             if (0 <= u && u <= 1 && 0 <= v && v <= 1) {
@@ -56,10 +57,9 @@ function BoundingBox(gl, projectionMatrix, modelViewMatrix, eye) {
                 //
                 // The bounding box is in model space (local coordinates). We transform
                 // it into world space when measuring the distance to the eye/camera to account for rotations.
-                const distance = glMatrix.vec3.distance(this.eye, glMatrix.vec3.fromValues(...worldPoint));
+                const distance = glMatrix.vec3.distance(EYE, glMatrix.vec3.fromValues(...worldPoint));
                 if (distance < minDistance) {
                     minDistance = distance;
-                    intersectionPoint = point;
                     intersection = {
                         point: point,
                         normal: glMatrix.vec3.normalize(glMatrix.vec3.create(), plane.normal),
@@ -107,3 +107,5 @@ function Plane(p0, p1, p2) {
         return point;
     }
 }
+
+export default BoundingBox;

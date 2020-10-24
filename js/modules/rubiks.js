@@ -1,16 +1,11 @@
-const EYE = [0, 0, 20];
+import './gl-matrix-min.js';
+import BoundingBox from './bounding-box.js';
+import { EYE } from './shader.js';
+
+const glMatrix = window.glMatrix;
+
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
-const LIGHTS = [
-    {
-        position: [35, 20, 10],
-        intensity: 1,
-    },
-    {
-        position: [0, -10, 0],
-        intensity: 1,
-    },
-];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
@@ -19,11 +14,6 @@ const LEFT_MOUSE = 0;
 const RIGHT_MOUSE = 2;
 const DEBOUNCE_TIMEOUT = 50;
 
-var $canvas;
-var gl;
-var rubiksCube;
-var shaderProgram;
-
 var leftMouseDown = false;
 var rightMouseDown = false;
 
@@ -31,18 +21,13 @@ var modelViewMatrix = glMatrix.mat4.create();
 var projectionMatrix = glMatrix.mat4.create();
 var rotationMatrix = glMatrix.mat4.create();
 
-function RubiksCube(data) {
+function RubiksCube(data, gl, shaderProgram, $canvas) {
     this.data = data;
     this.buffers = null;
     this.rotation = null;
     this.scrambleCycles = 0;
     this.cubes = new Array(3);
-    this.boundingBox = new BoundingBox(
-        gl,
-        projectionMatrix,
-        modelViewMatrix,
-        EYE,
-    );
+    this.boundingBox = new BoundingBox(gl, projectionMatrix, modelViewMatrix);
 
     this.init = function() {
         this.initBuffers();
@@ -55,7 +40,7 @@ function RubiksCube(data) {
                 for (let b = 0; b < 3; b++) {
                     // Each cube has dimensions 2x2x2 units.
                     const coordinates = glMatrix.vec3.fromValues(2 * (r - 1), 2 * (g - 1), 2 * (b - 1));
-                    const cube = new Cube(this, coordinates, data);
+                    const cube = new Cube(this, coordinates, data, gl, shaderProgram);
                     this.cubes[r][g][b] = cube;
                 }
             }
@@ -65,11 +50,11 @@ function RubiksCube(data) {
     this.initBuffers = function() {
         const vertices = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertices);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.vertices), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.vertices), gl.STATIC_DRAW);
 
         const normals = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, normals);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.data.normals), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.normals), gl.STATIC_DRAW);
 
         const buffer = new Array();
         for (let faceGroup of data.faces) {
@@ -89,7 +74,7 @@ function RubiksCube(data) {
     this.initRotation = function() {
         this.rotation = {
             cubes: null, // an array of Cubes
-            axis: null,  // a vec3
+            axis: null,  // a glMatrix.vec3
             angle: 0,    // the total angle of rotation
             speed: 0,    // the rotational speed from the mouse movement
         };
@@ -189,7 +174,7 @@ function RubiksCube(data) {
         }
     }
 
-    this.select = function(x, y) {
+    this.select = function(event) {
         const offset = $canvas.offset();
         return this.boundingBox.intersection(event.pageX - offset.left, event.pageY - offset.top);
     }
@@ -205,7 +190,7 @@ function RubiksCube(data) {
         leftMouseDown = isLeftMouse(event);
         rightMouseDown = isRightMouse(event);
 
-        const start = this.select(event.pageX, event.pageY);
+        const start = this.select(event);
         if (!start) {
             return;
         }
@@ -213,7 +198,7 @@ function RubiksCube(data) {
         $canvas.mousemove(debounce((ev) => {
             const delta = ev.timeStamp - event.timeStamp;
             if (leftMouseDown) {
-                const end = this.select(ev.pageX, ev.pageY);
+                const end = this.select(ev);
                 if (!end) {
                     return;
                 }
@@ -337,11 +322,71 @@ function RubiksCube(data) {
             this.isRotating() ? this.scrambleCycles-- : this.scramble();
         }
     }
+
+    this.topView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
+    }
+
+    this.bottomView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
+    }
+
+    this.leftView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
+    }
+
+    this.rightView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
+    }
+
+    this.frontView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.identity(rotationMatrix);
+    }
+
+    this.backView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(180));
+    }
+
+    this.perspectiveView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
+    }
+
+    this.togglePerspective = function(event) {
+        switch(event.which) {
+            case 32: // space
+                this.perspectiveView();
+                break;
+            case 97: // a, left
+                this.leftView();
+                break;
+            case 100: // d, right
+                this.rightView();
+                break;
+            case 101: // e, top
+                this.topView();
+                break;
+            case 113: // q, bottom
+                this.bottomView();
+                break;
+            case 115: // s, back
+                this.backView();
+                break;
+            case 119: // w, front
+                this.frontView();
+                break;
+        }
+    }
 }
 
-function Cube(rubiksCube, coordinates, data) {
-    this.rubiksCube = rubiksCube;
-    this.data = data;
+function Cube(rubiksCube, coordinates, data, gl, shaderProgram) {
     this.rotationMatrix = glMatrix.mat4.create();
     this.coordinates = coordinates;
 
@@ -359,10 +404,10 @@ function Cube(rubiksCube, coordinates, data) {
         const mvMatrix = glMatrix.mat4.create();
         glMatrix.mat4.copy(mvMatrix, modelViewMatrix);
         this.transform();
-        setMatrixUniforms();
+        setMatrixUniforms(gl, shaderProgram);
 
         let offset = 0;
-        for (let faceGroup of this.data.faces) {
+        for (let faceGroup of data.faces) {
             const material = faceGroup.material;
             // Blender doesn't seem to support per-object ambient colors or export the global ambient color,
             // so we compute our own ambient color as a darker version of the diffuse color.
@@ -393,7 +438,6 @@ function Cube(rubiksCube, coordinates, data) {
 
 function debounce(f, timeout) {
     let shouldDebounce = true;
-    let startTime = performance.now();
 
     return (event) => {
         if (shouldDebounce) {
@@ -408,129 +452,7 @@ function debounce(f, timeout) {
     }
 }
 
-function initWebGL(canvas) {
-    if (!window.WebGLRenderingContext) {
-        console.log("Your browser doesn't support WebGL.")
-        return null;
-    }
-    gl = canvas.getContext('webgl', {preserveDrawingBuffer: true}) || canvas.getContext('experimental-webgl', {preserveDrawingBuffer: true});
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight;
-    window.onresize = function () {
-        canvas.width = canvas.clientWidth;
-        canvas.height = canvas.clientHeight;
-    };
-
-    if (!gl) {
-        console.log("Your browser supports WebGL, but initialization failed.");
-        return null;
-    }
-    return gl;
-}
-
-function getShader(gl, id) {
-    const shaderScript = document.getElementById(id);
-    if (!shaderScript) {
-        return null;
-    }
-    let source = '';
-    let currentChild = shaderScript.firstChild;
-    while (currentChild) {
-        if (currentChild.nodeType === currentChild.TEXT_NODE) {
-            source += currentChild.textContent;
-        }
-        currentChild = currentChild.nextSibling;
-    }
-    let shader;
-    if (shaderScript.type === 'x-shader/x-fragment') {
-        shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if (shaderScript.type === 'x-shader/x-vertex') {
-        shader = gl.createShader(gl.VERTEX_SHADER);
-    } else {
-        return null;
-    }
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.log('An error occurred while compiling the shader: ' + gl.getShaderInfoLog(shader));
-        return null;
-    }
-    return shader;
-}
-
-function initShaders() {
-    const fragmentShader = getShader(gl, 'fragmentShader');
-    const vertexShader = getShader(gl, 'vertexShader');
-    shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.linkProgram(shaderProgram);
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        console.log('Unable to initialize the shader program');
-    }
-    gl.useProgram(shaderProgram);
-
-    shaderProgram.vertexPosition = gl.getAttribLocation(shaderProgram, 'vertexPosition');
-    gl.enableVertexAttribArray(shaderProgram.vertexPosition);
-
-    shaderProgram.vertexNormal = gl.getAttribLocation(shaderProgram, 'vertexNormal');
-    gl.enableVertexAttribArray(shaderProgram.vertexNormal);
-
-    shaderProgram.eye = gl.getUniformLocation(shaderProgram, 'eye');
-    gl.uniform3fv(shaderProgram.eye, EYE);
-
-    for (let i = 0; i < LIGHTS.length; i++) {
-        const lightPosition = `lights[${i}].position`;
-        const lightIntensity = `lights[${i}].intensity`;
-        shaderProgram[lightPosition] = gl.getUniformLocation(shaderProgram, lightPosition);
-        shaderProgram[lightIntensity] = gl.getUniformLocation(shaderProgram, lightIntensity);
-        gl.uniform3fv(shaderProgram[lightPosition], LIGHTS[i].position);
-        gl.uniform1f(shaderProgram[lightIntensity], LIGHTS[i].intensity);
-    }
-
-    shaderProgram.lighting = gl.getUniformLocation(shaderProgram, 'lighting');
-    shaderProgram.ambient = gl.getUniformLocation(shaderProgram, 'ambient');
-    shaderProgram.diffuse = gl.getUniformLocation(shaderProgram, 'diffuse');
-    shaderProgram.specular = gl.getUniformLocation(shaderProgram, 'specular');
-    shaderProgram.specularExponent = gl.getUniformLocation(shaderProgram, 'specularExponent');
-}
-
-// timestamp is a DOMHighResTimeStamp.
-// See https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame.
-function drawScene() {
-    let startTime = 0;
-
-    const animate = function(timestamp) {
-        const timeDelta = timestamp - startTime;
-
-        rubiksCube.draw();
-        rubiksCube.rotate(timeDelta);
-        requestAnimationFrame(animate);
-
-        startTime = timestamp;
-    }
-    return animate;
-}
-
-function start(data) {
-    gl = initWebGL($canvas[0]);
-    if (gl) {
-        gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.BACK);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        initShaders();
-
-        rubiksCube = new RubiksCube(data);
-        perspectiveView();
-        drawScene()(performance.now());
-    }
-}
-
-function setMatrixUniforms() {
+function setMatrixUniforms(gl, shaderProgram) {
     const projectionUniform = gl.getUniformLocation(shaderProgram, 'projectionMatrix');
     gl.uniformMatrix4fv(projectionUniform, false, projectionMatrix);
 
@@ -554,87 +476,11 @@ function isRightMouse(event) {
     return (event.button === LEFT_MOUSE && event.ctrlKey) || event.button === RIGHT_MOUSE
 }
 
-function topView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
-}
-
-function bottomView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
-}
-
-function leftView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
-}
-
-function rightView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
-}
-
-function frontView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.identity(rotationMatrix);
-}
-
-function backView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(180));
-}
-
-function perspectiveView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
-}
-
-function togglePerspective(event) {
-    switch(event.which) {
-        case 32: // space
-            perspectiveView();
-            break;
-        case 97: // a, left
-            leftView();
-            break;
-        case 100: // d, right
-            rightView();
-            break;
-        case 101: // e, top
-            topView();
-            break;
-        case 113: // q, bottom
-            bottomView();
-            break;
-        case 115: // s, back
-            backView();
-            break;
-        case 119: // w, front
-            frontView();
-            break;
-    }
-}
-
-function scramble() {
+function scramble(rubiksCube) {
     if (rubiksCube.scrambleCycles === 0) {
         rubiksCube.scrambleCycles = Math.ceil(Math.random() * 10 + 10); // an integer between 10 and 20
         rubiksCube.scramble();
     }
 }
 
-$(document).ready(function() {
-    $canvas = $('#glcanvas');
-
-    const pathname = location.pathname;
-    const base = pathname.substring(0, pathname.lastIndexOf('/'));
-
-    $.get(`${base}/models/rubiks-cube.json`, function(data) {
-        start(data[0]);
-        $canvas.bind('contextmenu', function(e) { return false; });
-        $canvas.mousedown(rubiksCube.startRotate.bind(rubiksCube));
-        $canvas.mouseup(rubiksCube.endRotate.bind(rubiksCube));
-        $canvas.mouseout(rubiksCube.endRotate.bind(rubiksCube));
-        $('body').keypress(togglePerspective);
-    });
-});
+export { RubiksCube, scramble };
