@@ -2,6 +2,8 @@ import './gl-matrix-min.js';
 import { BoundingBox } from './bounding-box.js';
 import { EYE } from './shader.js';
 
+const glMatrix = window.glMatrix;
+
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);

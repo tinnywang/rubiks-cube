@@ -1,6 +1,8 @@
 import './gl-matrix-min.js';
 import { EYE } from './shader.js';
 
+const glMatrix = window.glMatrix;
+
 // The bounding box is a 6x6x6 cube, centered at the origin, that inscribes the Rubik's cube.
 // Each face of the bounding box corresponds to a side of the Rubik's cube.
 function BoundingBox(gl, projectionMatrix, modelViewMatrix) {
