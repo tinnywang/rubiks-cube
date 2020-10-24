@@ -1,5 +1,5 @@
 import './gl-matrix-min.js';
-import { BoundingBox } from './bounding-box.js';
+import BoundingBox from './bounding-box.js';
 import { EYE } from './shader.js';
 
 const glMatrix = window.glMatrix;

@@ -108,4 +108,4 @@ function Plane(p0, p1, p2) {
     }
 }
 
-export { BoundingBox };
+export default BoundingBox;
