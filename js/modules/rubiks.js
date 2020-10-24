@@ -322,6 +322,68 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
             this.isRotating() ? this.scrambleCycles-- : this.scramble();
         }
     }
+
+    this.topView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
+    }
+
+    this.bottomView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
+    }
+
+    this.leftView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
+    }
+
+    this.rightView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
+    }
+
+    this.frontView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.identity(rotationMatrix);
+    }
+
+    this.backView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(180));
+    }
+
+    this.perspectiveView = function() {
+        glMatrix.mat4.identity(rotationMatrix);
+        glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
+        glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
+    }
+
+    this.togglePerspective = function(event) {
+        switch(event.which) {
+            case 32: // space
+                this.perspectiveView();
+                break;
+            case 97: // a, left
+                this.leftView();
+                break;
+            case 100: // d, right
+                this.rightView();
+                break;
+            case 101: // e, top
+                this.topView();
+                break;
+            case 113: // q, bottom
+                this.bottomView();
+                break;
+            case 115: // s, back
+                this.backView();
+                break;
+            case 119: // w, front
+                this.frontView();
+                break;
+        }
+    }
 }
 
 function Cube(rubiksCube, coordinates, data, gl, shaderProgram) {
@@ -414,68 +476,6 @@ function isRightMouse(event) {
     return (event.button === LEFT_MOUSE && event.ctrlKey) || event.button === RIGHT_MOUSE
 }
 
-function topView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
-}
-
-function bottomView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
-}
-
-function leftView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(-90));
-}
-
-function rightView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(90));
-}
-
-function frontView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.identity(rotationMatrix);
-}
-
-function backView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(180));
-}
-
-function perspectiveView() {
-    glMatrix.mat4.identity(rotationMatrix);
-    glMatrix.mat4.rotateX(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(30));
-    glMatrix.mat4.rotateY(rotationMatrix, rotationMatrix, glMatrix.glMatrix.toRadian(45));
-}
-
-function togglePerspective(event) {
-    switch(event.which) {
-        case 32: // space
-            perspectiveView();
-            break;
-        case 97: // a, left
-            leftView();
-            break;
-        case 100: // d, right
-            rightView();
-            break;
-        case 101: // e, top
-            topView();
-            break;
-        case 113: // q, bottom
-            bottomView();
-            break;
-        case 115: // s, back
-            backView();
-            break;
-        case 119: // w, front
-            frontView();
-            break;
-    }
-}
-
 function scramble(rubiksCube) {
     if (rubiksCube.scrambleCycles === 0) {
         rubiksCube.scrambleCycles = Math.ceil(Math.random() * 10 + 10); // an integer between 10 and 20
@@ -483,4 +483,4 @@ function scramble(rubiksCube) {
     }
 }
 
-export { perspectiveView, RubiksCube, scramble, togglePerspective };
+export { RubiksCube, scramble };

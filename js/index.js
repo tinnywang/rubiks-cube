@@ -1,7 +1,7 @@
 import 'https://code.jquery.com/jquery-3.5.1.min.js';
 import initCanvas from './modules/canvas.js';
 import initWebGL from './modules/gl.js';
-import { perspectiveView, RubiksCube, scramble, togglePerspective } from './modules/rubiks.js';
+import { RubiksCube, scramble } from './modules/rubiks.js';
 import { initShader } from './modules/shader.js';
 
 const $ = window.$;
@@ -38,10 +38,10 @@ $(document).ready(function() {
         $canvas.mousedown(rubiksCube.startRotate.bind(rubiksCube));
         $canvas.mouseup(rubiksCube.endRotate.bind(rubiksCube));
         $canvas.mouseout(rubiksCube.endRotate.bind(rubiksCube));
-        $('body').keypress(togglePerspective);
+        $('body').keypress(rubiksCube.togglePerspective.bind(rubiksCube));
         $('#scramble').click(() => scramble(rubiksCube));
 
-        perspectiveView();
+        rubiksCube.perspectiveView();
         drawScene(rubiksCube)(performance.now());
     });
 });
