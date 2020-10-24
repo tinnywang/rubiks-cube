@@ -1,19 +1,9 @@
 import './gl-matrix-min.js';
 import { BoundingBox } from './bounding-box.js';
+import { EYE } from './shader.js';
 
-const EYE = [0, 0, 20];
 const CENTER = [0, 0, 0];
 const UP = [0, 1, 0];
-const LIGHTS = [
-    {
-        position: [35, 20, 10],
-        intensity: 1,
-    },
-    {
-        position: [0, -10, 0],
-        intensity: 1,
-    },
-];
 const VIEW_MATRIX = glMatrix.mat4.lookAt(glMatrix.mat4.create(), EYE, CENTER, UP);
 const FOV = glMatrix.glMatrix.toRadian(70);
 const Z_NEAR = 1;
@@ -35,7 +25,7 @@ function RubiksCube(data, gl, shaderProgram, $canvas) {
     this.rotation = null;
     this.scrambleCycles = 0;
     this.cubes = new Array(3);
-    this.boundingBox = new BoundingBox(gl, projectionMatrix, modelViewMatrix, EYE);
+    this.boundingBox = new BoundingBox(gl, projectionMatrix, modelViewMatrix);
 
     this.init = function() {
         this.initBuffers();
@@ -491,4 +481,4 @@ function scramble(rubiksCube) {
     }
 }
 
-export { EYE, LIGHTS, perspectiveView, RubiksCube, scramble, togglePerspective };
+export { perspectiveView, RubiksCube, scramble, togglePerspective };
