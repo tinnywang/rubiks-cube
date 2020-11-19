@@ -1,5 +1,3 @@
-import 'https://code.jquery.com/jquery-3.5.1.min.js';
-
 const EYE = [0, 0, 20];
 const LIGHTS = [
     {
