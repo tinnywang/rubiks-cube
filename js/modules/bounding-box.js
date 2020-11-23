@@ -1,4 +1,4 @@
-import '/js/libs/gl-matrix-min.js';
+import '../libs/gl-matrix-min.js';
 import { EYE } from './shader.js';
 
 const glMatrix = window.glMatrix;

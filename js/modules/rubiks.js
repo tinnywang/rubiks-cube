@@ -1,4 +1,4 @@
-import '/js/libs/gl-matrix-min.js';
+import '../libs/gl-matrix-min.js';
 import BoundingBox from './bounding-box.js';
 import { EYE } from './shader.js';
 
