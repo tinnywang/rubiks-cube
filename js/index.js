@@ -1,10 +1,7 @@
-import 'https://code.jquery.com/jquery-3.5.1.min.js';
 import initCanvas from './modules/canvas.js';
 import initWebGL from './modules/gl.js';
 import { RubiksCube, scramble } from './modules/rubiks.js';
 import { initShader } from './modules/shader.js';
-
-const $ = window.$;
 
 // timestamp is a DOMHighResTimeStamp.
 // See https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame.

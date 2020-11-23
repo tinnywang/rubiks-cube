@@ -8,61 +8,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
         <link rel="stylesheet" href="static/main.css">
-        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
         <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+        <script src="js/libs/ShaderLoader.min.js"></script>
         <script type="module" src="js/index.js"></script>
-        <script id='fragmentShader' type='x-shader/x-fragment'>
-            varying highp vec4 position;
-            varying highp vec3 normal;
-
-            const int NUM_LIGHTS = 2;
-            struct Light {
-                highp vec3 position;
-                highp float intensity;
-            };
-            uniform Light lights[NUM_LIGHTS];
-
-            uniform bool lighting;
-            uniform highp vec3 eye;
-            uniform highp vec3 ambient;
-            uniform highp vec3 diffuse;
-            uniform highp vec3 specular;
-            uniform highp float specularExponent;
-
-            void main(void) {
-                if (lighting) {
-                    for (int i = 0; i < NUM_LIGHTS; i++) {
-                        Light light = lights[i];
-                        highp vec3 position = position.xyz / position.w;
-                        highp vec3 eyeDirection = normalize(eye - position);
-                        highp vec3 lightDirection = normalize(light.position - position);
-                        highp vec3 diffuseTerm = diffuse * light.intensity * max(dot(lightDirection, normal), 0.0);
-                        highp vec3 reflection = normalize(reflect(-lightDirection, normal));
-                        highp vec3 specularTerm = specular * light.intensity * pow(max(dot(reflection, eyeDirection), 0.0), specularExponent);
-                        gl_FragColor += vec4(diffuseTerm + specularTerm + ambient, 1.0);
-                    }
-                } else {
-                    gl_FragColor = vec4(diffuse, 1.0);
-                }
-            }
-        </script>
-        <script id='vertexShader' type='x-shader/x-vertex'>
-            attribute vec3 vertexPosition;
-            attribute vec3 vertexNormal;
-
-            uniform mat4 modelViewMatrix;
-            uniform mat4 projectionMatrix;
-            uniform mat3 normalMatrix;
-
-            varying vec4 position;
-            varying vec3 normal;
-
-            void main(void) {
-                position = modelViewMatrix * vec4(vertexPosition, 1.0);
-                gl_Position = projectionMatrix * position;
-                normal = normalize(normalMatrix * vertexNormal);
-            }
-       </script>
+        <script data-src="js/shaders/fragment.js" data-name="shader" type='x-shader/x-fragment'></script>
+        <script data-src="js/shaders/vertex.js" data-name="shader" type='x-shader/x-vertex'></script>
     </head>
     <body class='container'>
         <div class='row fill'>
